@@ -1,0 +1,29 @@
+[package]
+  name    = "cassander"
+  version = "0.1.0"
+  edition = "2021"
+  license = "MIT"
+  authors = [ "Oleksandr Manenko <koornacht@use.startmail.com>" ]
+
+[features]
+  default     = [ "bigdecimal", "chrono", "num-bigint", "uuid" ]
+  bigdecimal  = [ "dep:bigdecimal" ]
+  chrono      = [ "dep:chrono"     ]
+  num-bigint  = [ "dep:num-bigint" ]
+  uuid        = [ "dep:uuid"       ]
+
+[dependencies]
+  dashmap     = "5.5"
+  futures     = "0.3"
+  itertools   = "0.12"
+  parking_lot = "0.12"
+  thiserror   = "1.0"
+  tracing     = "0.1"
+  # Optional dependencies --------------------------------------------------------
+  bigdecimal = { version = "0.4", optional = true }
+  chrono     = { version = "0.4", default-features = false, optional = true }
+  num-bigint = { version = "0.4", optional = true }
+  uuid       = { version = "1.7", optional = true }
+
+[build-dependencies]
+  bindgen = "0.69.4"
