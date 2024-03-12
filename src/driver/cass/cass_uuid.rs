@@ -94,6 +94,21 @@ impl CassUuid {
     pub fn clock_seq_and_node(&self) -> u64 {
         self.as_raw().clock_seq_and_node
     }
+
+    /// Returns timestamp for a V1 UUID.
+    ///
+    /// Returns `None` if the UUID is not a V1 UUID or if the timestamp is too
+    /// large to fit in an `i64`.
+    pub fn timestamp(&self) -> Option<i64> {
+        let timestamp = unsafe { cass_uuid_timestamp(self.0) }.try_into().ok();
+
+        // The driver returns 0 if the UUID is not a V1 UUID.
+        match timestamp {
+            Some(timestamp) if timestamp > 0 => Some(timestamp),
+            Some(_) => None,
+            None => None,
+        }
+    }
 }
 
 #[cfg(feature = "uuid")]
