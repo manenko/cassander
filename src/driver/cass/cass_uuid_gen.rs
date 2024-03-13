@@ -13,6 +13,7 @@ use crate::driver::ffi::{
 };
 
 /// A UUID generator.
+#[repr(transparent)]
 pub struct CassUuidGen(*mut struct_CassUuidGen_);
 
 impl CassUuidGen {
