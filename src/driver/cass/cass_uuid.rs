@@ -1,4 +1,14 @@
+use std::ffi::CStr;
+use std::fmt::{
+    Debug,
+    Display,
+    Formatter,
+};
+use std::str::FromStr;
+
+use crate::driver::cass::CassError;
 use crate::driver::ffi::{
+    cass_uuid_from_string_n,
     cass_uuid_gen_from_time,
     cass_uuid_gen_random,
     cass_uuid_gen_time,
@@ -10,12 +20,33 @@ use crate::driver::ffi::{
     struct_CassUuid_,
 };
 
+/// A UUID version.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum CassUuidVersion {
+    /// Time-based version 1 UUID.
+    V1,
+    /// Randomly generated version 4 UUID.
+    V4,
+    /// The version is unknown or invalid.
+    Other(u8),
+}
+
 /// Version 1 (time-based) or version 4 (random) UUID.
 #[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
 pub struct CassUuid(struct_CassUuid_);
 
 impl CassUuid {
+    /// The maximum allowed timestamp for a V1 UUID.
+    ///
+    /// The driver stores the time part as the number of 100 nanosecond periods.
+    /// It expects that timestamps are measured in milliseconds and converts the
+    /// timestamp into the 100 nanosecond periodis via
+    /// `timestamp_ms * 1_000_000ns / 100`. This means the maximum allowed
+    /// timestamp value, which does not overflow during this conversion, is
+    /// `0x0FFFFFFFFFFFFFFF / 10_000 = 0x68DB8BAC710C` milliseconds.
+    pub const MAX_TIMESTAMP_MS: i64 = 0x68DB8BAC710C;
+
     /// Creates a new UUID from the given components.
     ///
     /// The `time_and_version` parameter encodes the time and version part of
@@ -43,34 +74,37 @@ impl CassUuid {
         })
     }
 
-    /// Sets the UUID to the minimum V1 (time) value for the specified time.
+    /// Sets the UUID to the minimum V1 value for the specified timestamp.
     ///
-    /// The `time` is in milliseconds since the Unix epoch (1970-01-01).
+    /// The `timestamp` is in milliseconds since the Unix epoch (1970-01-01).
     ///
-    /// Returns `None` if the `time` is negative.
-    pub fn min_from_time(time: i64) -> Option<Self> {
-        let time = time.try_into().ok()?;
+    /// Returns `None` if the `timestamp` is negative or larger than
+    /// the [`CassUuid::MAX_TIMESTAMP_MS`].
+    pub fn min_from_time(timestamp: i64) -> Option<Self> {
+        let timestamp = to_driver_timestamp(timestamp)?;
         let mut uuid: struct_CassUuid_ = unsafe { std::mem::zeroed() };
-        unsafe { cass_uuid_min_from_time(time, &mut uuid) };
+        unsafe { cass_uuid_min_from_time(timestamp, &mut uuid) };
 
         Some(Self(uuid))
     }
 
-    /// Sets the UUID to the maximum V1 (time) value for the specified time.
+    /// Sets the UUID to the maximum V1 value for the specified timestamp.
     ///
-    /// The time is in milliseconds since the Unix epoch (1970-01-01).
+    /// The `timestamp` is in milliseconds since the Unix epoch (1970-01-01).
     ///
-    /// Returns `None` if the `time` is negative.
-    pub fn max_from_time(time: i64) -> Option<Self> {
-        let time = time.try_into().ok()?;
+    /// Returns `None` if the `timestamp` is negative or larger than
+    /// the [`CassUuid::MAX_TIMESTAMP_MS`].
+    pub fn max_from_time(timestamp: i64) -> Option<Self> {
+        let timestamp = to_driver_timestamp(timestamp)?;
         let mut uuid: struct_CassUuid_ = unsafe { std::mem::zeroed() };
-        unsafe { cass_uuid_max_from_time(time, &mut uuid) };
+        unsafe { cass_uuid_max_from_time(timestamp, &mut uuid) };
+
         Some(Self(uuid))
     }
 
     /// Returns the underlying [`struct_CassUuid_`] driver object.
-    pub fn as_raw(&self) -> &struct_CassUuid_ {
-        &self.0
+    pub fn as_raw(&self) -> struct_CassUuid_ {
+        self.0
     }
 
     /// Returns the time and version part of a UUID.
@@ -98,9 +132,11 @@ impl CassUuid {
     /// Returns timestamp for a V1 UUID.
     ///
     /// Returns `None` if the UUID is not a V1 UUID or if the timestamp is too
-    /// large to fit in an `i64`.
+    /// large to fit in an `i64` value.
     pub fn timestamp(&self) -> Option<i64> {
-        let timestamp = unsafe { cass_uuid_timestamp(self.0) }.try_into().ok();
+        let timestamp = unsafe { cass_uuid_timestamp(self.as_raw()) }
+            .try_into()
+            .ok();
 
         // The driver returns 0 if the UUID is not a V1 UUID.
         match timestamp {
@@ -108,6 +144,63 @@ impl CassUuid {
             Some(_) => None,
             None => None,
         }
+    }
+
+    /// Return the version of this UUID.
+    pub fn version(&self) -> CassUuidVersion {
+        match unsafe { cass_uuid_version(self.as_raw()) } {
+            1 => CassUuidVersion::V1,
+            4 => CassUuidVersion::V4,
+            v => CassUuidVersion::Other(v),
+        }
+    }
+}
+
+impl Display for CassUuid {
+    /// Formats the UUID as a string.
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut output = [0u8; 37];
+        unsafe {
+            cass_uuid_string(self.as_raw(), output.as_mut_ptr() as *mut _);
+        }
+
+        let uuid_str = CStr::from_bytes_with_nul(&output)
+            .map_err(|_| std::fmt::Error)?
+            .to_str()
+            .map_err(|_| std::fmt::Error)?;
+
+        write!(f, "{}", uuid_str)
+    }
+}
+
+impl FromStr for CassUuid {
+    type Err = ();
+
+    /// Parses a UUID from a string.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut uuid: struct_CassUuid_ = unsafe { std::mem::zeroed() };
+        let cstr = std::ffi::CString::new(s).map_err(|_| ())?;
+        let str_length = cstr.as_bytes().len();
+        let code: CassError = unsafe {
+            cass_uuid_from_string_n(cstr.as_ptr(), str_length, &mut uuid)
+        }
+        .into();
+
+        if code.is_ok() {
+            Ok(Self(uuid))
+        } else {
+            Err(())
+        }
+    }
+}
+
+/// Converts a signed Unix timestamp in milliseconds to a driver timestamp
+/// taking into account the value overflow.
+fn to_driver_timestamp(timestamp: i64) -> Option<u64> {
+    if !(0..=CassUuid::MAX_TIMESTAMP_MS).contains(&timestamp) {
+        None
+    } else {
+        Some(timestamp as u64)
     }
 }
 
