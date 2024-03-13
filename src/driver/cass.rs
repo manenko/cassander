@@ -16,6 +16,7 @@ mod cass_ssl;
 mod cass_ssl_verify_flags;
 mod cass_try_into;
 mod cass_uuid;
+mod cass_uuid_gen;
 mod cass_version;
 mod cass_write_type;
 
@@ -30,5 +31,6 @@ pub use cass_retry_policy::*;
 pub use cass_ssl::*;
 pub use cass_ssl_verify_flags::*;
 pub use cass_uuid::*;
+pub use cass_uuid_gen::*;
 pub use cass_version::*;
 pub use cass_write_type::*;

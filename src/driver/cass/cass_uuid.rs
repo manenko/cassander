@@ -9,9 +9,6 @@ use std::str::FromStr;
 use crate::driver::cass::CassError;
 use crate::driver::ffi::{
     cass_uuid_from_string_n,
-    cass_uuid_gen_from_time,
-    cass_uuid_gen_random,
-    cass_uuid_gen_time,
     cass_uuid_max_from_time,
     cass_uuid_min_from_time,
     cass_uuid_string,
@@ -173,6 +170,34 @@ impl Display for CassUuid {
     }
 }
 
+impl PartialEq for CassUuid {
+    /// Compares two UUIDs for equality.
+    fn eq(&self, other: &Self) -> bool {
+        self.time_and_version() == other.time_and_version()
+            && self.clock_seq_and_node() == other.clock_seq_and_node()
+    }
+}
+
+impl Eq for CassUuid {}
+
+impl Ord for CassUuid {
+    /// Compares two UUIDs.
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.time_and_version()
+            .cmp(&other.time_and_version())
+            .then_with(|| {
+                self.clock_seq_and_node().cmp(&other.clock_seq_and_node())
+            })
+    }
+}
+
+impl PartialOrd for CassUuid {
+    /// Compares two UUIDs.
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 impl FromStr for CassUuid {
     type Err = ();
 
@@ -194,13 +219,10 @@ impl FromStr for CassUuid {
     }
 }
 
-/// Converts a signed Unix timestamp in milliseconds to a driver timestamp
-/// taking into account the value overflow.
-fn to_driver_timestamp(timestamp: i64) -> Option<u64> {
-    if !(0..=CassUuid::MAX_TIMESTAMP_MS).contains(&timestamp) {
-        None
-    } else {
-        Some(timestamp as u64)
+impl From<struct_CassUuid_> for CassUuid {
+    /// Converts a driver UUID to a Rust UUID.
+    fn from(value: struct_CassUuid_) -> Self {
+        Self(value)
     }
 }
 
@@ -257,5 +279,15 @@ impl From<CassUuid> for uuid::Uuid {
         }
 
         uuid::Uuid::from_bytes(output)
+    }
+}
+
+/// Converts a signed Unix timestamp in milliseconds to a driver timestamp
+/// taking into account the value overflow.
+pub(crate) fn to_driver_timestamp(timestamp: i64) -> Option<u64> {
+    if !(0..=CassUuid::MAX_TIMESTAMP_MS).contains(&timestamp) {
+        None
+    } else {
+        Some(timestamp as u64)
     }
 }
