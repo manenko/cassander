@@ -9,6 +9,8 @@ use crate::driver::ffi::{
 };
 
 /// A generator of client-side, microsecond-precision timestamps.
+///
+/// Objects of this type can be shared between threads and sessions.
 #[derive(Clone)]
 pub struct CassTimestampGen(Arc<CassTimestampGenWrapper>);
 

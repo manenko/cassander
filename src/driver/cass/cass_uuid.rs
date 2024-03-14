@@ -291,3 +291,66 @@ pub(crate) fn to_driver_timestamp(timestamp: i64) -> Option<u64> {
         Some(timestamp as u64)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cass_uuid_from_components() {
+        let time_and_version = 0x3039;
+        let clock_seq_and_node = 0x10C1A;
+
+        let uuid =
+            CassUuid::from_components(time_and_version, clock_seq_and_node);
+        assert_eq!(uuid.time_and_version(), time_and_version);
+        assert_eq!(uuid.clock_seq_and_node(), clock_seq_and_node);
+    }
+
+    #[test]
+    fn test_cass_uuid_min_max_from_time() {
+        let timestamp = 0xBEAF;
+        let min_uuid = CassUuid::min_from_time(timestamp).unwrap();
+        let max_uuid = CassUuid::max_from_time(timestamp).unwrap();
+        assert!(min_uuid.time_and_version() <= max_uuid.time_and_version());
+    }
+
+    #[test]
+    fn test_cass_uuid_timestamp() {
+        let timestamp = 0xDEADBEAF;
+        let uuid = CassUuid::min_from_time(timestamp).unwrap();
+        assert_eq!(uuid.timestamp().unwrap(), timestamp);
+    }
+
+    #[test]
+    fn test_cass_uuid_version() {
+        let time_and_version: u64 = 1 << 60; // version 1
+        let clock_seq_and_node: u64 = 0;
+        let uuid =
+            CassUuid::from_components(time_and_version, clock_seq_and_node);
+        assert_eq!(uuid.version(), CassUuidVersion::V1);
+    }
+
+    #[test]
+    fn test_cass_uuid_display() {
+        let time_and_version = 0x3039;
+        let clock_seq_and_node = 0x10C1A;
+        let uuid =
+            CassUuid::from_components(time_and_version, clock_seq_and_node);
+        assert_eq!(format!("{}", uuid), "00003039-0000-0000-0000-000000010c1a");
+    }
+
+    #[test]
+    fn test_cass_uuid_partial_ord() {
+        let uuid1 = CassUuid::from_components(1, 1);
+        let uuid2 = CassUuid::from_components(2, 2);
+        assert!(uuid1 < uuid2);
+    }
+
+    #[test]
+    fn test_cass_uuid_from_str() {
+        let uuid_str = "00000000-0000-3039-0000-000000010c1a";
+        let uuid = CassUuid::from_str(uuid_str).unwrap();
+        assert_eq!(format!("{}", uuid), uuid_str);
+    }
+}
