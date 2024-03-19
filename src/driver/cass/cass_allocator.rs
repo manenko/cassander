@@ -52,15 +52,18 @@ unsafe extern "C" fn rust_global_allocator_free(ptr: *mut c_void) {
     }
 }
 
+/// Allocates, deallocates, and frees memory blocks while storing the block size
+/// inside them.
+///
 /// # The Problem
 ///
-/// The Rust allocator API requires a Layout struct to be passed into each of
-/// its functions. For example, to reallocate or free memory, you need to pass
-/// the pointer to the existing memory block and the layout used during its
+/// The Rust allocator API requires a [`Layout`] struct to be passed into each
+/// of its functions. For example, to reallocate or free memory, you need to
+/// pass the pointer to the existing memory block and the layout used during its
 /// allocaton.
 ///
 /// This is a problem when interacting with C API which does not provide any
-/// means of storing addition allocation data.
+/// means of storing additional allocation data.
 ///
 /// The driver's memory allocation functions is the example of such API, e.g.
 ///
@@ -109,10 +112,10 @@ unsafe extern "C" fn rust_global_allocator_free(ptr: *mut c_void) {
 ///    pointer we return to the caller
 /// ```
 ///
-/// Then, for Rust realloc and dealloc functions, we take the pointer, subtract
-/// the size of the allocation information, read the size of the block and
-/// reconstruct the layout structure. We don't need to store the alignment, as
-/// we always use the same alignment (C API does not provide alignment
+/// Then, for Rust [`realloc`] and [`dealloc`] functions, we take the pointer,
+/// subtract the size of the allocation information, read the size of the block
+/// and reconstruct the layout structure. We don't need to store the alignment,
+/// as we always use the same alignment (C API does not provide alignment
 /// parameters at all anyway).
 struct MemoryBlock(*mut u8);
 
