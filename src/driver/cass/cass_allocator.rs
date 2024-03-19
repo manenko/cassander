@@ -150,7 +150,10 @@ impl MemoryBlock {
         if ptr.is_null() {
             None
         } else {
-            Some(Self(ptr as *mut u8))
+            // Move to the beginning of the block.
+            let ptr = (ptr as *mut u8).byte_sub(size_of::<usize>());
+
+            Some(Self(ptr))
         }
     }
 
