@@ -8,6 +8,7 @@ use crate::driver::cass::{
     CassProtocolVersion,
     CassRetryPolicy,
     CassSsl,
+    CassTimestampGen,
     CassUuid,
 };
 use crate::driver::ffi::{
@@ -53,6 +54,7 @@ use crate::driver::ffi::{
     cass_cluster_set_ssl,
     cass_cluster_set_tcp_keepalive,
     cass_cluster_set_tcp_nodelay,
+    cass_cluster_set_timestamp_gen,
     cass_cluster_set_token_aware_routing,
     cass_cluster_set_token_aware_routing_shuffle_replicas,
     cass_cluster_set_tracing_consistency,
@@ -946,6 +948,17 @@ impl CassCluster {
             cass_cluster_set_histogram_refresh_interval(self.as_raw(), interval)
         }
         .into()
+    }
+
+    /// Sets the timestamp generator used to assign timestamps to all requests
+    /// unless overridden by setting the timestamp on a statement or a batch.
+    ///
+    /// The default value is monotonically increasing, client-side timestamp
+    /// generator.
+    pub fn set_timestamp_gen(&mut self, gen: &CassTimestampGen) -> CassError {
+        unsafe { cass_cluster_set_timestamp_gen(self.as_raw(), gen.as_raw()) };
+
+        CassError::Ok
     }
 }
 
