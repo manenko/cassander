@@ -1,7 +1,4 @@
-use crate::driver::cass::{
-    to_driver_timestamp,
-    CassUuid,
-};
+use crate::driver::cass::CassUuid;
 use crate::driver::ffi::{
     cass_uuid_gen_free,
     cass_uuid_gen_from_time,
@@ -13,6 +10,8 @@ use crate::driver::ffi::{
 };
 
 /// A UUID generator.
+///
+/// It is best practice to create and reuse a single object per application.
 #[repr(transparent)]
 pub struct CassUuidGen(*mut struct_CassUuidGen_);
 
@@ -51,18 +50,11 @@ impl CassUuidGen {
     /// Generates a V1 (time) UUID for the specified timestamp.
     ///
     /// The `timestamp` is measured in milliseconds since the Unix epoch.
-    ///
-    /// The function returns `None` if the timestamp is negative or is too large
-    /// to fit in an `i64` value.
-    pub fn gerate_uuid_from_timestamp(
-        &self,
-        timestamp: i64,
-    ) -> Option<CassUuid> {
-        let timestamp = to_driver_timestamp(timestamp)?;
+    pub fn generate_uuid_from_timestamp(&self, timestamp: u64) -> CassUuid {
         let mut uuid = unsafe { std::mem::zeroed() };
         unsafe { cass_uuid_gen_from_time(self.as_raw(), timestamp, &mut uuid) };
 
-        Some(uuid.into())
+        uuid.into()
     }
 }
 

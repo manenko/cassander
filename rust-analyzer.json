@@ -1,18 +1,19 @@
 {
-  "rustfmt": {
-    "extraArgs": ["+nightly"]
-  },
-  "cargo": {
-    "features": "all"
-  },
-  "imports": {
-    "prefix": "crate",
-    "granularity": {
-      "group": "module"
+  "rust-analyzer": {
+    "rustfmt": {
+      "extraArgs": ["+nightly"]
+    },
+    "cargo": {
+      "features": "all"
+    },
+    "imports": {
+      "prefix": "crate",
+      "granularity": {
+        "group": "module"
+      }
+    },
+    "check": {
+      "command": "clippy"
     }
-  },
-  "check": {
-    "command": "clippy"
   }
 }
-

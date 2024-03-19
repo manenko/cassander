@@ -7,6 +7,7 @@ use crate::driver::cass::{
     CassProtocolVersion,
     CassRetryPolicy,
     CassSsl,
+    CassUuid,
 };
 use crate::driver::ffi::{
     cass_cluster_free,
@@ -15,6 +16,7 @@ use crate::driver::ffi::{
     cass_cluster_set_application_version_n,
     cass_cluster_set_blacklist_dc_filtering_n,
     cass_cluster_set_blacklist_filtering_n,
+    cass_cluster_set_client_id,
     cass_cluster_set_connect_timeout,
     cass_cluster_set_connection_heartbeat_interval,
     cass_cluster_set_connection_idle_timeout,
@@ -31,6 +33,7 @@ use crate::driver::ffi::{
     cass_cluster_set_max_connections_per_host,
     cass_cluster_set_max_reusable_write_objects,
     cass_cluster_set_max_schema_wait_time,
+    cass_cluster_set_monitor_reporting_interval,
     cass_cluster_set_no_compact,
     cass_cluster_set_no_speculative_execution_policy,
     cass_cluster_set_num_threads_io,
@@ -890,11 +893,36 @@ impl CassCluster {
         CassError::Ok
     }
 
-    // Sets the client id.
-    //pub fn set_client_id(&mut self, id: CassUuid) -> CassError
-    //{
-    //   unimplemented!()
-    //}
+    /// Sets the client identifier.
+    ///
+    /// This is optional; however it provides the server with the client
+    /// identifier that can aid in debugging issues with larger clusters where
+    /// there are a lot of client (or application) connections.
+    ///
+    /// Default value is a random UUID v4.
+    pub fn set_client_id(&mut self, id: CassUuid) -> CassError {
+        unsafe { cass_cluster_set_client_id(self.as_raw(), id.as_raw()) };
+
+        CassError::Ok
+    }
+
+    /// Sets the amount of time in seconds between monitor reporting event
+    /// messages.
+    ///
+    /// Setting this to zero disables the reporting of event messages.
+    ///
+    /// The default value is 300 seconds.
+    pub fn set_monitor_reporting_interval(
+        &mut self,
+        interval: i64,
+    ) -> CassError {
+        let interval = cass_try_into!(interval);
+        unsafe {
+            cass_cluster_set_monitor_reporting_interval(self.as_raw(), interval)
+        };
+
+        CassError::Ok
+    }
 }
 
 impl Default for CassCluster {
