@@ -22,6 +22,11 @@ impl CassSession {
 
         Self(Arc::new(CassSessionWrapper(session)))
     }
+
+    /// Returns the raw pointer to the session object.
+    pub fn as_raw(&self) -> *mut struct_CassSession_ {
+        self.0.as_raw()
+    }
 }
 
 impl Default for CassSession {
