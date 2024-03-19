@@ -1,4 +1,5 @@
 use std::ffi::c_char;
+use std::num::NonZeroI64;
 
 use crate::cass_try_into;
 use crate::driver::cass::{
@@ -25,6 +26,7 @@ use crate::driver::ffi::{
     cass_cluster_set_contact_points_n,
     cass_cluster_set_core_connections_per_host,
     cass_cluster_set_credentials_n,
+    cass_cluster_set_histogram_refresh_interval,
     cass_cluster_set_latency_aware_routing,
     cass_cluster_set_latency_aware_routing_settings,
     cass_cluster_set_load_balance_dc_aware_n,
@@ -922,6 +924,28 @@ impl CassCluster {
         };
 
         CassError::Ok
+    }
+
+    /// Sets the amount of time in milliseconds after which metric histograms
+    /// should be refreshed.
+    ///
+    /// Upon refresh histograms are reset to zero, effectively dropping any
+    /// history to that point. Refresh occurs when a snapshot is requested so
+    /// this value should be thought of as a minimum time to refresh.
+    ///
+    /// If refresh is not enabled the driver will continue to accumulate
+    /// histogram data over the life of a session; this is the default behaviour
+    /// and replicates the behaviour of previous versions.
+    pub fn set_histogram_refresh_interval(
+        &mut self,
+        interval: NonZeroI64,
+    ) -> CassError {
+        let interval = cass_try_into!(interval.get());
+
+        unsafe {
+            cass_cluster_set_histogram_refresh_interval(self.as_raw(), interval)
+        }
+        .into()
     }
 }
 

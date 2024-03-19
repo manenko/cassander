@@ -4,6 +4,7 @@
 //! idiomatic Rust. They are a direct translation of the C++ API to Rust. The
 //! idiomatic Rust API is provided by the top-level module.
 
+mod cass_allocator;
 mod cass_authenticator;
 mod cass_bool;
 mod cass_cluster;
@@ -12,6 +13,7 @@ mod cass_error;
 mod cass_error_result;
 mod cass_protocol_version;
 mod cass_retry_policy;
+mod cass_session;
 mod cass_ssl;
 mod cass_ssl_verify_flags;
 mod cass_timestamp_gen;
@@ -21,6 +23,7 @@ mod cass_uuid_gen;
 mod cass_version;
 mod cass_write_type;
 
+pub use cass_allocator::*;
 pub use cass_authenticator::*;
 pub use cass_bool::*;
 pub use cass_cluster::*;
@@ -29,6 +32,7 @@ pub use cass_error::*;
 pub use cass_error_result::*;
 pub use cass_protocol_version::*;
 pub use cass_retry_policy::*;
+pub use cass_session::*;
 pub use cass_ssl::*;
 pub use cass_ssl_verify_flags::*;
 pub use cass_timestamp_gen::*;
