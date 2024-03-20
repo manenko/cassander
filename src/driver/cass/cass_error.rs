@@ -247,7 +247,7 @@ impl CassError {
     }
 
     /// Returns `Ok(())` if this is [`CassError::Ok`] or `Err(self)` otherwise.
-    pub fn as_result(self) -> Result<(), CassError> {
+    pub fn to_result(self) -> Result<(), CassError> {
         if self.is_error() {
             Err(self)
         } else {
