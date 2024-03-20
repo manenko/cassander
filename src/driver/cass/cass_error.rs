@@ -3,6 +3,8 @@ use std::fmt::{
     Formatter,
 };
 
+use thiserror::Error;
+
 use crate::driver::ffi::{
     enum_CassError_,
     enum_CassError__CASS_ERROR_LIB_BAD_PARAMS as CASS_ERROR_LIB_BAD_PARAMS,
@@ -81,7 +83,7 @@ use crate::driver::ffi::{
 /// The `Unknown` variant is used for error codes that are not known to this
 /// crate.
 #[must_use]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Error)]
 pub enum CassError {
     /// The operation finished successfully.
     Ok,
