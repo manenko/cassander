@@ -80,6 +80,7 @@ use crate::driver::ffi::{
 ///
 /// The `Unknown` variant is used for error codes that are not known to this
 /// crate.
+#[must_use]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum CassError {
     /// The operation finished successfully.
@@ -243,6 +244,15 @@ impl CassError {
     /// Returns `true` if the error is `Ok`.
     pub fn is_ok(self) -> bool {
         self == CassError::Ok
+    }
+
+    /// Returns `Ok(())` if this is [`CassError::Ok`] or `Err(self)` otherwise.
+    pub fn as_result(self) -> Result<(), CassError> {
+        if self.is_error() {
+            Err(self)
+        } else {
+            Ok(())
+        }
     }
 }
 
