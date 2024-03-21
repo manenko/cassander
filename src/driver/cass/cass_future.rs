@@ -4,6 +4,7 @@ use crate::driver::cass::{
     CassBool,
     CassError,
     CassErrorResult,
+    CassSession,
     CassUuid,
 };
 use crate::driver::ffi::{
@@ -31,10 +32,26 @@ use crate::driver::ffi::{
 #[must_use]
 pub struct CassFuture {
     /// The driver's future object.
-    inner: *mut struct_CassFuture_,
+    inner:   *mut struct_CassFuture_,
+    /// The session that created the future.
+    ///
+    /// The future must not outlive the session.
+    session: CassSession,
 }
 
 impl CassFuture {
+    /// Creates a new future object.
+    pub fn new(inner: *mut struct_CassFuture_, session: CassSession) -> Self {
+        assert!(
+            !inner.is_null(),
+            "the driver's future object must not be null"
+        );
+        Self {
+            inner,
+            session,
+        }
+    }
+
     /// Returns the raw pointer to the future object.
     pub fn as_raw(&self) -> *mut struct_CassFuture_ {
         self.inner
