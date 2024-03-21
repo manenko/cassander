@@ -4,4 +4,4 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+include!("./cassandra.rs");
