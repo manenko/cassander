@@ -1,9 +1,10 @@
 [package]
-  name    = "cassander"
-  version = "0.1.0"
-  edition = "2021"
-  license = "MIT"
-  authors = [ "Oleksandr Manenko <koornacht@use.startmail.com>" ]
+  name        = "cassander"
+  version     = "0.1.0"
+  edition     = "2021"
+  license     = "MIT"
+  description = "A Rustified wrapper around the DataStax C/C++ Driver for Apache Cassandra and DataStax Products"
+  authors     = [ "Oleksandr Manenko <koornacht@use.startmail.com>" ]
 
 [features]
   default     = [ "bigdecimal", "chrono", "num-bigint", "uuid" ]
