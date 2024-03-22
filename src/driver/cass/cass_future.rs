@@ -25,6 +25,50 @@ use crate::driver::ffi::{
 // TODO: cass_future_custom_payload_item
 // TODO: cass_future_coordinator
 
+// The driver's future has a `cass_future_set_callback` function that allows
+// setting a callback to be called when the future is set. This is what we use
+// to implement the `Future` trait for the `CassFuture` type.
+//
+// The callback is called with the future and the user data in the following
+// cases:
+// - When the future is set with a result or error.
+// - When the future is set with a result or error and the future is already
+//   ready.
+//
+// The second case requires a bit more of explanation:
+// https://github.com/datastax/cpp-driver/blob/2.17.1/src/future.cpp#L176-L188.
+// The driver uses a mutex to set a callback and checks if the future is ready.
+// If the future is ready, the driver releases the mutex and calls the callback.
+// In other words, when calling `cass_future_set_callback` the callback is
+// called immediately if the future is already set.
+//
+// The `CassFuture` can have the following states:
+// - `Created`. We created a future from the driver's future object. The future
+//   may not be ready yet but it already has background work scheduled and maybe
+//   executing it.
+// - `NotSet`. The future is not ready yet and the background work is not done.
+// - `Set`. The future is ready and the background work is done. The future may
+//   have a result or an error.
+//
+// Every state transition is done in the `Future::poll` method. 
+//
+// We enter the `Created` state when calling `poll` for the first time. This is
+// the only time we can call `cass_future_set_callback` to set the callback.
+// Remember that the callback is called immediately if the future is already
+// set.
+//
+// If the future is not ready, we enter the `NotSet` state which keeps the waker
+// and return `Poll::Pending`.
+//
+// If the state is `Set`, we return `Poll::Ready` with the future itself as a
+// result.
+//
+// The callback is called when the future is set and this is the place where we
+// transition to the `Set` state and call the waker.
+//
+// There are implementation details related to multihreading and synchronization
+// but in general, this is how the `Future` trait is implemented.
+
 /// The future result of a DataStax C++ driver operation.
 ///
 /// It can represent a result if the operation completed successfully or an
