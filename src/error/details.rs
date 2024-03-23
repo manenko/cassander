@@ -36,7 +36,7 @@ use crate::{
 ///
 /// It is available for server errors only.
 #[repr(transparent)]
-pub struct DriverErrorDetails(*const struct_CassErrorResult_);
+pub struct DriverErrorDetails(CassErrorResult);
 
 impl DriverErrorDetails {
     /// Creates a `DriverErrorDetails` from the driver object.
@@ -48,13 +48,13 @@ impl DriverErrorDetails {
         if error.is_null() {
             None
         } else {
-            Some(Self(error))
+            Some(Self(CassErrorResult::from_driver(error)))
         }
     }
 
     /// Returns the raw pointer to the driver's error result object.
     pub(crate) fn inner(&self) -> *const struct_CassErrorResult_ {
-        self.0
+        self.0.inner()
     }
 
     /// Returns an error code for this error result.
@@ -221,12 +221,6 @@ impl DriverErrorDetails {
     }
 }
 
-impl Drop for DriverErrorDetails {
-    fn drop(&mut self) {
-        unsafe { cass_error_result_free(self.inner()) }
-    }
-}
-
 impl Display for DriverErrorDetails {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.code())
@@ -294,3 +288,27 @@ where
 
     Some(string.into_owned())
 }
+
+#[repr(transparent)]
+struct CassErrorResult(*const struct_CassErrorResult_);
+
+impl CassErrorResult {
+    pub(crate) fn from_driver(error: *const struct_CassErrorResult_) -> Self {
+        Self(error)
+    }
+
+    pub(crate) fn inner(&self) -> *const struct_CassErrorResult_ {
+        self.0
+    }
+}
+
+impl Drop for CassErrorResult {
+    fn drop(&mut self) {
+        unsafe { cass_error_result_free(self.0) }
+    }
+}
+
+// TODO: Check if this is correct.
+// The object is read-only and can be safely shared between threads.
+unsafe impl Send for CassErrorResult {}
+unsafe impl Sync for CassErrorResult {}
