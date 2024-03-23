@@ -1,9 +1,10 @@
 use std::ffi::c_char;
+use std::slice;
 use std::fmt::{
+    self,
     Debug,
     Formatter,
 };
-use std::slice;
 
 use crate::convert::MaybeInto;
 use crate::driver::cass::{
@@ -208,7 +209,7 @@ impl Drop for CassErrorResult {
 }
 
 impl Debug for CassErrorResult {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("CassErrorResult")
             .field("code", &self.code())
             .field("consistency", &self.consistency())

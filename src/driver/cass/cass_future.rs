@@ -1,5 +1,7 @@
 use std::slice;
 
+use thiserror::Error;
+
 use crate::driver::cass::{
     CassBool,
     CassError,
@@ -29,6 +31,10 @@ use crate::driver::ffi::{
 // setting a callback to be called when the future is set. This is what we use
 // to implement the `Future` trait for the `CassFuture` type.
 //
+// -----------------------------------------------------------------------------
+// Callbacks
+// -----------------------------------------------------------------------------
+//
 // The callback is called with the future and the user data in the following
 // cases:
 // - When the future is set with a result or error.
@@ -42,6 +48,10 @@ use crate::driver::ffi::{
 // In other words, when calling `cass_future_set_callback` the callback is
 // called immediately if the future is already set.
 //
+// -----------------------------------------------------------------------------
+// Future States
+// -----------------------------------------------------------------------------
+//
 // The `CassFuture` can have the following states:
 // - `Created`. We created a future from the driver's future object. The future
 //   may not be ready yet but it already has background work scheduled and maybe
@@ -50,7 +60,11 @@ use crate::driver::ffi::{
 // - `Set`. The future is ready and the background work is done. The future may
 //   have a result or an error.
 //
-// Every state transition is done in the `Future::poll` method. 
+// -----------------------------------------------------------------------------
+// Future State Transitions
+// -----------------------------------------------------------------------------
+//
+// Every state transition is done in the `Future::poll` method.
 //
 // We enter the `Created` state when calling `poll` for the first time. This is
 // the only time we can call `cass_future_set_callback` to set the callback.
@@ -60,14 +74,97 @@ use crate::driver::ffi::{
 // If the future is not ready, we enter the `NotSet` state which keeps the waker
 // and return `Poll::Pending`.
 //
-// If the state is `Set`, we return `Poll::Ready` with the future itself as a
-// result.
+// If the state is `Set`, we return `Poll::Ready` with the future result.
 //
 // The callback is called when the future is set and this is the place where we
 // transition to the `Set` state and call the waker.
 //
 // There are implementation details related to multihreading and synchronization
 // but in general, this is how the `Future` trait is implemented.
+//
+// -----------------------------------------------------------------------------
+// Future Results
+// -----------------------------------------------------------------------------
+//
+// The driver future can have the following results:
+// - `CassResult`. The future has been set with a successfull query result.
+// - `CassPrepared`. The future has been set with a prepared statement.
+// - `CassPayload`. The future has been set with a custom payload.
+// - `()` (unit). The future has been set with a void result.
+// - `CassError`. The future has been set with a client-side error.
+// - `CassErrorResult`. The future has been set with a server-side error.
+//
+// The problem is that the `Future` trait can only return one type of result.
+// So we need the type returned by the `poll` method to be able to costruct
+// itself from the druver's future. Which means a custom trait. The method(-s)
+// of this trait will be called from the `poll` method in case of a successful
+// future result. The trait's method(-s) may also return an error. Which in turn
+// means we need a custom error type. The type should be constructable from the
+// driver's error object.
+
+/// An error result of a future.
+#[derive(Debug, Error)]
+#[error("{}", .message)]
+pub struct CassFutureError {
+    /// The error code.
+    pub code:    CassError,
+    /// The error message.
+    pub message: String,
+    /// Additional error details which are available for server errors.
+    pub details: Option<Box<CassErrorResult>>,
+}
+
+impl CassFutureError {
+    /// Creates a new error result of a future.
+    pub fn new<T>(
+        code: CassError,
+        message: T,
+        details: Option<Box<CassErrorResult>>,
+    ) -> Self
+    where
+        T: Into<String>,
+    {
+        Self {
+            code,
+            message: message.into(),
+            details,
+        }
+    }
+
+    /// Creates a new error result of a future from a driver error and the error
+    /// message.
+    ///
+    /// Returns `None` if the error code is [`CassError::Ok`].
+    ///
+    /// Use this method when the error is not a server error and you want to
+    /// provide a custom error message for it.
+    ///
+    /// When there is no custom error message, use the [`Into`] implementation
+    /// instead.
+    pub fn from_cass_error<T>(code: CassError, message: T) -> Option<Self>
+    where
+        T: Into<String>,
+    {
+        if code.is_ok() {
+            None
+        } else {
+            Some(Self::new(code, message, None))
+        }
+    }
+}
+
+impl From<CassError> for Option<CassFutureError> {
+    /// Creates a new error result of a future from a driver error.
+    ///
+    /// Returns `None` if the error code is [`CassError::Ok`].
+    ///
+    /// The method uses default error messages for the driver errors. In case
+    /// you want to provide a custom error message, use the
+    /// [`CassFutureError::from_cass_error`] method instead.
+    fn from(code: CassError) -> Self {
+        CassFutureError::from_cass_error(code, code.to_string())
+    }
+}
 
 /// The future result of a DataStax C++ driver operation.
 ///
