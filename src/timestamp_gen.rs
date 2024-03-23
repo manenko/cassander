@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::driver::ffi::{
+use crate::ffi::{
     cass_timestamp_gen_free,
     cass_timestamp_gen_monotonic_new,
     cass_timestamp_gen_monotonic_new_with_settings,
@@ -12,20 +12,20 @@ use crate::driver::ffi::{
 ///
 /// Objects of this type can be shared between threads and sessions.
 #[derive(Clone)]
-pub struct CassTimestampGen(Arc<CassTimestampGenWrapper>);
+pub struct TimestampGen(Arc<TimestampGenWrapper>);
 
-impl CassTimestampGen {
+impl TimestampGen {
     /// Creates a new server-side timestamp generator.
     ///
     /// This generator allows Cassandra to assign timestamps server-side.
     ///
     /// This is the default timestamp generator.
     pub fn new() -> Self {
-        Self::from_raw(unsafe { cass_timestamp_gen_server_side_new() })
+        Self::from_driver(unsafe { cass_timestamp_gen_server_side_new() })
     }
 
-    fn from_raw(raw: *mut struct_CassTimestampGen_) -> Self {
-        Self(Arc::new(CassTimestampGenWrapper(raw)))
+    fn from_driver(raw: *mut struct_CassTimestampGen_) -> Self {
+        Self(Arc::new(TimestampGenWrapper(raw)))
     }
 
     /// Creates a new monotonically increasing timestamp generator with
@@ -43,7 +43,7 @@ impl CassTimestampGen {
     /// [`CassTimestampGen::monotonic_with_settings`] to create the generator
     /// instance.
     pub fn monotonic() -> Self {
-        Self::from_raw(unsafe { cass_timestamp_gen_monotonic_new() })
+        Self::from_driver(unsafe { cass_timestamp_gen_monotonic_new() })
     }
 
     /// Same as [`CassTimestampGen::monotonic`] but with settings for
@@ -66,16 +66,16 @@ impl CassTimestampGen {
                 update_interval,
             )
         };
-        Self::from_raw(raw)
+        Self::from_driver(raw)
     }
 
     /// Returns the raw pointer to the underlying driver object.
-    pub fn as_raw(&self) -> *mut struct_CassTimestampGen_ {
+    pub(crate) fn inner(&self) -> *mut struct_CassTimestampGen_ {
         self.0 .0
     }
 }
 
-impl Default for CassTimestampGen {
+impl Default for TimestampGen {
     /// Creates a new server-side timestamp generator.
     ///
     /// This generator allows Cassandra to assign timestamps server-side.
@@ -85,13 +85,13 @@ impl Default for CassTimestampGen {
 }
 
 #[repr(transparent)]
-struct CassTimestampGenWrapper(*mut struct_CassTimestampGen_);
+struct TimestampGenWrapper(*mut struct_CassTimestampGen_);
 
-impl Drop for CassTimestampGenWrapper {
+impl Drop for TimestampGenWrapper {
     fn drop(&mut self) {
         unsafe { cass_timestamp_gen_free(self.0) }
     }
 }
 
-unsafe impl Send for CassTimestampGenWrapper {}
-unsafe impl Sync for CassTimestampGenWrapper {}
+unsafe impl Send for TimestampGenWrapper {}
+unsafe impl Sync for TimestampGenWrapper {}

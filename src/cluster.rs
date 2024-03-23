@@ -1,17 +1,7 @@
 use std::ffi::c_char;
 use std::num::NonZeroI64;
 
-use crate::cass_try_into;
-use crate::driver::cass::{
-    CassConsistency,
-    CassError,
-    CassProtocolVersion,
-    CassRetryPolicy,
-    CassSsl,
-    CassTimestampGen,
-    CassUuid,
-};
-use crate::driver::ffi::{
+use crate::ffi::{
     cass_cluster_free,
     cass_cluster_new,
     cass_cluster_set_application_name_n,
@@ -66,6 +56,13 @@ use crate::driver::ffi::{
     cass_cluster_set_whitelist_filtering_n,
     struct_CassCluster_,
 };
+use crate::{
+    Consistency,
+    DriverError,
+    ProtocolVersion,
+    Ssl,
+    TimestampGen,
+};
 
 // TODO: `cass_cluster_set_authenticator_callbacks`
 // TODO: `cass_cluster_set_timestamp_gen`
@@ -80,16 +77,16 @@ use crate::driver::ffi::{
 /// Unlike other DataStax drivers the cluster object does not maintain the
 /// control connection.
 #[repr(transparent)]
-pub struct CassCluster(*mut struct_CassCluster_);
+pub struct Cluster(*mut struct_CassCluster_);
 
-impl CassCluster {
+impl Cluster {
     /// Creates a new cluster object.
     pub fn new() -> Self {
-        unsafe { CassCluster(cass_cluster_new()) }
+        unsafe { Cluster(cass_cluster_new()) }
     }
 
     /// Returns the raw pointer to the cluster object.
-    pub fn as_raw(&self) -> *mut struct_CassCluster_ {
+    pub(crate) fn inner(&self) -> *mut struct_CassCluster_ {
         self.0
     }
 
@@ -100,28 +97,31 @@ impl CassCluster {
     /// The first call sets the contact points and any subsequent calls appends
     /// additional contact points. Passing an empty string will clear the
     /// contact points. White space is striped from the contact points.
-    pub fn set_contact_points<T>(&mut self, contact_points: T) -> CassError
+    pub fn set_contact_points<T>(
+        &mut self,
+        contact_points: T,
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
         let contact_points = contact_points.as_ref();
         let len = contact_points.len();
         let ptr = contact_points.as_ptr() as *const c_char;
-        unsafe { cass_cluster_set_contact_points_n(self.as_raw(), ptr, len) }
+        unsafe { cass_cluster_set_contact_points_n(self.inner(), ptr, len) }
             .into()
     }
 
     /// Sets the port.
     ///
     /// The default value is 9042.
-    pub fn set_port(&mut self, port: u16) -> CassError {
+    pub fn set_port(&mut self, port: u16) -> Result<(), DriverError> {
         let port = port as i32;
-        unsafe { cass_cluster_set_port(self.as_raw(), port) }.into()
+        unsafe { cass_cluster_set_port(self.inner(), port) }.into()
     }
 
     /// Sets the SSL context and enables SSL.
-    pub fn set_ssl(&mut self, ssl: &CassSsl) -> CassError {
-        unsafe { cass_cluster_set_ssl(self.as_raw(), ssl.as_raw()) };
+    pub fn set_ssl(&mut self, ssl: &Ssl) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_ssl(self.inner(), ssl.inner()) };
 
         CassError::Ok
     }
@@ -134,10 +134,10 @@ impl CassCluster {
     /// The default value is [`CassProtocolVersion::V4`].
     pub fn set_protocol_version(
         &mut self,
-        version: CassProtocolVersion,
-    ) -> CassError {
+        version: ProtocolVersion,
+    ) -> Result<(), DriverError> {
         let version = cass_try_into!(u32::from(version));
-        unsafe { cass_cluster_set_protocol_version(self.as_raw(), version) }
+        unsafe { cass_cluster_set_protocol_version(self.inner(), version) }
             .into()
     }
 
@@ -147,9 +147,9 @@ impl CassCluster {
     pub fn set_consistency(
         &mut self,
         consistency: CassConsistency,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         unsafe {
-            cass_cluster_set_consistency(self.as_raw(), consistency.into())
+            cass_cluster_set_consistency(self.inner(), consistency.into())
         }
         .into()
     }
@@ -159,12 +159,12 @@ impl CassCluster {
     /// The default value is [`CassConsistency::Any`].
     pub fn set_serial_consistency(
         &mut self,
-        consistency: CassConsistency,
-    ) -> CassError {
+        consistency: Consistency,
+    ) -> Result<(), DriverError> {
         unsafe {
             cass_cluster_set_serial_consistency(
-                self.as_raw(),
-                consistency.into(),
+                self.inner(),
+                consistency.to_driver(),
             )
         }
         .into()
@@ -175,27 +175,36 @@ impl CassCluster {
     /// This is the number of threads that will handle query requests.
     ///
     /// The default value is 1.
-    pub fn set_num_threads_io(&mut self, num_threads: usize) -> CassError {
+    pub fn set_num_threads_io(
+        &mut self,
+        num_threads: usize,
+    ) -> Result<(), DriverError> {
         let num_threads = cass_try_into!(num_threads);
-        unsafe { cass_cluster_set_num_threads_io(self.as_raw(), num_threads) }
+        unsafe { cass_cluster_set_num_threads_io(self.inner(), num_threads) }
             .into()
     }
 
     /// Sets the size of the fixed size queue that stores pending requests.
     ///
     /// The default value is 8192.
-    pub fn set_queue_size_io(&mut self, queue_size: usize) -> CassError {
+    pub fn set_queue_size_io(
+        &mut self,
+        queue_size: usize,
+    ) -> Result<(), DriverError> {
         let queue_size = cass_try_into!(queue_size);
-        unsafe { cass_cluster_set_queue_size_io(self.as_raw(), queue_size) }
+        unsafe { cass_cluster_set_queue_size_io(self.inner(), queue_size) }
             .into()
     }
 
     /// Sets the size of the fixed size queue that stores events.
     ///
     /// The default value is 8192.
-    pub fn set_queue_size_event(&mut self, queue_size: usize) -> CassError {
+    pub fn set_queue_size_event(
+        &mut self,
+        queue_size: usize,
+    ) -> Result<(), DriverError> {
         let queue_size = cass_try_into!(queue_size);
-        unsafe { cass_cluster_set_queue_size_event(self.as_raw(), queue_size) }
+        unsafe { cass_cluster_set_queue_size_event(self.inner(), queue_size) }
             .into()
     }
 
@@ -205,11 +214,11 @@ impl CassCluster {
     pub fn set_core_connections_per_host(
         &mut self,
         num_connections: usize,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let num_connections = cass_try_into!(num_connections);
         unsafe {
             cass_cluster_set_core_connections_per_host(
-                self.as_raw(),
+                self.inner(),
                 num_connections,
             )
         }
@@ -223,11 +232,11 @@ impl CassCluster {
     pub fn set_max_connections_per_host(
         &mut self,
         num_connections: usize,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let num_connections = cass_try_into!(num_connections);
         unsafe {
             cass_cluster_set_max_connections_per_host(
-                self.as_raw(),
+                self.inner(),
                 num_connections,
             )
         }
@@ -237,10 +246,13 @@ impl CassCluster {
     /// Sets the wait time in milliseconds before attempting to reconnect.
     ///
     /// The default value is 2000ms.
-    pub fn set_reconnect_wait_time(&mut self, wait_time: i64) -> CassError {
+    pub fn set_reconnect_wait_time(
+        &mut self,
+        wait_time: i64,
+    ) -> Result<(), DriverError> {
         let wait_time = cass_try_into!(wait_time);
         unsafe {
-            cass_cluster_set_reconnect_wait_time(self.as_raw(), wait_time)
+            cass_cluster_set_reconnect_wait_time(self.inner(), wait_time)
         };
 
         CassError::Ok
@@ -256,11 +268,11 @@ impl CassCluster {
     pub fn set_max_concurrent_creation(
         &mut self,
         num_connections: usize,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let num_connections = cass_try_into!(num_connections);
         unsafe {
             cass_cluster_set_max_concurrent_creation(
-                self.as_raw(),
+                self.inner(),
                 num_connections,
             )
             .into()
@@ -270,9 +282,12 @@ impl CassCluster {
     /// Sets the timeout in milliseconds for connecting to a node.
     ///
     /// The default value is 5000ms.
-    pub fn set_connect_timeout(&mut self, timeout: i64) -> CassError {
+    pub fn set_connect_timeout(
+        &mut self,
+        timeout: i64,
+    ) -> Result<(), DriverError> {
         let timeout = cass_try_into!(timeout);
-        unsafe { cass_cluster_set_connect_timeout(self.as_raw(), timeout) };
+        unsafe { cass_cluster_set_connect_timeout(self.inner(), timeout) };
 
         CassError::Ok
     }
@@ -280,17 +295,23 @@ impl CassCluster {
     /// Sets the timeout in milliseconds for waiting for a response from a node.
     ///
     /// The default value is 12000ms.
-    pub fn set_request_timeout(&mut self, timeout: i64) -> CassError {
+    pub fn set_request_timeout(
+        &mut self,
+        timeout: i64,
+    ) -> Result<(), DriverError> {
         let timeout = cass_try_into!(timeout);
-        unsafe { cass_cluster_set_request_timeout(self.as_raw(), timeout) };
+        unsafe { cass_cluster_set_request_timeout(self.inner(), timeout) };
 
         CassError::Ok
     }
 
     /// Sets the timeout in milliseconds for waiting for DNS name resolution.
-    pub fn set_resolve_timeout(&mut self, timeout: i64) -> CassError {
+    pub fn set_resolve_timeout(
+        &mut self,
+        timeout: i64,
+    ) -> Result<(), DriverError> {
         let timeout = cass_try_into!(timeout);
-        unsafe { cass_cluster_set_resolve_timeout(self.as_raw(), timeout) };
+        unsafe { cass_cluster_set_resolve_timeout(self.inner(), timeout) };
 
         CassError::Ok
     }
@@ -300,10 +321,13 @@ impl CassCluster {
     /// table/keyspace/view/index etc).
     ///
     /// The default value is 10000ms.
-    pub fn set_max_schema_wait_time(&mut self, wait_time: i64) -> CassError {
+    pub fn set_max_schema_wait_time(
+        &mut self,
+        wait_time: i64,
+    ) -> Result<(), DriverError> {
         if let Ok(wait_time) = wait_time.try_into() {
             unsafe {
-                cass_cluster_set_max_schema_wait_time(self.as_raw(), wait_time)
+                cass_cluster_set_max_schema_wait_time(self.inner(), wait_time)
             };
 
             CassError::Ok
@@ -316,10 +340,13 @@ impl CassCluster {
     /// available.
     ///
     /// The default value is 15ms.
-    pub fn set_tracing_max_wait_time(&mut self, wait_time: i64) -> CassError {
+    pub fn set_tracing_max_wait_time(
+        &mut self,
+        wait_time: i64,
+    ) -> Result<(), DriverError> {
         if let Ok(wait_time) = wait_time.try_into() {
             unsafe {
-                cass_cluster_set_tracing_max_wait_time(self.as_raw(), wait_time)
+                cass_cluster_set_tracing_max_wait_time(self.inner(), wait_time)
             };
 
             CassError::Ok
@@ -332,11 +359,14 @@ impl CassCluster {
     /// tracing is available.
     ///
     /// The default value is 3ms.
-    pub fn set_tracing_retry_wait_time(&mut self, wait_time: i64) -> CassError {
+    pub fn set_tracing_retry_wait_time(
+        &mut self,
+        wait_time: i64,
+    ) -> Result<(), DriverError> {
         if let Ok(wait_time) = wait_time.try_into() {
             unsafe {
                 cass_cluster_set_tracing_retry_wait_time(
-                    self.as_raw(),
+                    self.inner(),
                     wait_time,
                 )
             };
@@ -353,11 +383,11 @@ impl CassCluster {
     /// The default value is [`CassConsistency::One`].
     pub fn set_tracing_consistency(
         &mut self,
-        consistency: CassConsistency,
-    ) -> CassError {
+        consistency: Consistency,
+    ) -> Result<(), DriverError> {
         unsafe {
             cass_cluster_set_tracing_consistency(
-                self.as_raw(),
+                self.inner(),
                 consistency.into(),
             )
         };
@@ -370,7 +400,7 @@ impl CassCluster {
         &mut self,
         username: A,
         password: B,
-    ) -> CassError
+    ) -> Result<(), DriverError>
     where
         A: AsRef<str>,
         B: AsRef<str>,
@@ -385,7 +415,7 @@ impl CassCluster {
 
         unsafe {
             cass_cluster_set_credentials_n(
-                self.as_raw(),
+                self.inner(),
                 username_ptr,
                 username_len,
                 password_ptr,
@@ -400,8 +430,8 @@ impl CassCluster {
     ///
     /// The driver discovers all nodes in a cluster and cycles through them per
     /// request. All are considered 'local'.
-    pub fn set_load_balance_round_robin(&mut self) -> CassError {
-        unsafe { cass_cluster_set_load_balance_round_robin(self.as_raw()) };
+    pub fn set_load_balance_round_robin(&mut self) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_load_balance_round_robin(self.inner()) };
 
         CassError::Ok
     }
@@ -431,7 +461,7 @@ impl CassCluster {
         local_dc: T,
         used_hosts_per_remote_dc: usize,
         allow_remote_dcs_for_local_cl: bool,
-    ) -> CassError
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
@@ -444,7 +474,7 @@ impl CassCluster {
         {
             unsafe {
                 cass_cluster_set_load_balance_dc_aware_n(
-                    self.as_raw(),
+                    self.inner(),
                     local_dc_ptr,
                     local_dc_len,
                     used_hosts_per_remote_dc,
@@ -470,9 +500,12 @@ impl CassCluster {
     /// policy.
     ///
     /// The default value is `true`.
-    pub fn set_token_aware_routing(&mut self, enabled: bool) -> CassError {
+    pub fn set_token_aware_routing(
+        &mut self,
+        enabled: bool,
+    ) -> Result<(), DriverError> {
         unsafe {
-            cass_cluster_set_token_aware_routing(self.as_raw(), enabled.into())
+            cass_cluster_set_token_aware_routing(self.inner(), enabled.into())
         };
 
         CassError::Ok
@@ -489,10 +522,10 @@ impl CassCluster {
     pub fn set_token_aware_routing_shuffle_replicas(
         &mut self,
         enabled: bool,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         unsafe {
             cass_cluster_set_token_aware_routing_shuffle_replicas(
-                self.as_raw(),
+                self.inner(),
                 enabled.into(),
             )
         };
@@ -507,12 +540,12 @@ impl CassCluster {
     /// (token-aware) before considering the latency.
     ///
     /// The default value is `false`.
-    pub fn set_latency_aware_routing(&mut self, enabled: bool) -> CassError {
+    pub fn set_latency_aware_routing(
+        &mut self,
+        enabled: bool,
+    ) -> Result<(), DriverError> {
         unsafe {
-            cass_cluster_set_latency_aware_routing(
-                self.as_raw(),
-                enabled.into(),
-            )
+            cass_cluster_set_latency_aware_routing(self.inner(), enabled.into())
         };
 
         CassError::Ok
@@ -548,7 +581,7 @@ impl CassCluster {
         retry_period: i64,
         update_rate: i64,
         min_measured: usize,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let scale = cass_try_into!(scale);
         let retry_period = cass_try_into!(retry_period);
         let update_rate = cass_try_into!(update_rate);
@@ -556,7 +589,7 @@ impl CassCluster {
 
         unsafe {
             cass_cluster_set_latency_aware_routing_settings(
-                self.as_raw(),
+                self.inner(),
                 exclusion_threshold,
                 scale,
                 retry_period,
@@ -579,7 +612,10 @@ impl CassCluster {
     /// whitelist will be ignored and a connection will not be established. This
     /// policy is useful for ensuring that the driver will only connect to a
     /// predefined set of hosts.
-    pub fn set_whitelist_filtering<T>(&mut self, hosts: T) -> CassError
+    pub fn set_whitelist_filtering<T>(
+        &mut self,
+        hosts: T,
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
@@ -587,7 +623,7 @@ impl CassCluster {
         let len = hosts.len();
         let ptr = hosts.as_ptr() as *const c_char;
         unsafe {
-            cass_cluster_set_whitelist_filtering_n(self.as_raw(), ptr, len)
+            cass_cluster_set_whitelist_filtering_n(self.inner(), ptr, len)
         };
 
         CassError::Ok
@@ -604,7 +640,10 @@ impl CassCluster {
     /// blacklist will be ignored and a connection will not be established. This
     /// policy is useful for ensuring that the driver will not connect to a
     /// predefined set of hosts.
-    pub fn set_blacklist_filtering<T>(&mut self, hosts: T) -> CassError
+    pub fn set_blacklist_filtering<T>(
+        &mut self,
+        hosts: T,
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
@@ -612,7 +651,7 @@ impl CassCluster {
         let len = hosts.len();
         let ptr = hosts.as_ptr() as *const c_char;
         unsafe {
-            cass_cluster_set_blacklist_filtering_n(self.as_raw(), ptr, len)
+            cass_cluster_set_blacklist_filtering_n(self.inner(), ptr, len)
         };
 
         CassError::Ok
@@ -621,7 +660,10 @@ impl CassCluster {
     /// Same as
     /// [`set_whitelist_filtering`](CassCluster::set_whitelist_filtering) but
     /// whitelists all hosts of a datacenter.
-    pub fn set_whitelist_dc_filtering<T>(&mut self, datacenters: T) -> CassError
+    pub fn set_whitelist_dc_filtering<T>(
+        &mut self,
+        datacenters: T,
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
@@ -629,7 +671,7 @@ impl CassCluster {
         let len = dc.len();
         let ptr = dc.as_ptr() as *const c_char;
         unsafe {
-            cass_cluster_set_whitelist_dc_filtering_n(self.as_raw(), ptr, len)
+            cass_cluster_set_whitelist_dc_filtering_n(self.inner(), ptr, len)
         };
 
         CassError::Ok
@@ -638,7 +680,10 @@ impl CassCluster {
     /// Same as
     /// [`set_blacklist_filtering`](CassCluster::set_blacklist_filtering) but
     /// blacklists all hosts of a datacenter.
-    pub fn set_blacklist_dc_filtering<T>(&mut self, datacenters: T) -> CassError
+    pub fn set_blacklist_dc_filtering<T>(
+        &mut self,
+        datacenters: T,
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
@@ -646,7 +691,7 @@ impl CassCluster {
         let len = dc.len();
         let ptr = dc.as_ptr() as *const c_char;
         unsafe {
-            cass_cluster_set_blacklist_dc_filtering_n(self.as_raw(), ptr, len)
+            cass_cluster_set_blacklist_dc_filtering_n(self.inner(), ptr, len)
         };
 
         CassError::Ok
@@ -655,8 +700,8 @@ impl CassCluster {
     /// Enables/Disables Nagle's algorithm on connections.
     ///
     /// The default value is `true` (disables Nagle's algorithm).
-    pub fn set_tcp_nodelay(&mut self, enable: bool) -> CassError {
-        unsafe { cass_cluster_set_tcp_nodelay(self.as_raw(), enable.into()) };
+    pub fn set_tcp_nodelay(&mut self, enable: bool) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_tcp_nodelay(self.inner(), enable.into()) };
 
         CassError::Ok
     }
@@ -668,11 +713,14 @@ impl CassCluster {
     /// specified value in seconds.
     ///
     /// The default value is `None` (disable TCP keep-alive).
-    pub fn set_tcp_keepalive(&mut self, delay: Option<i64>) -> CassError {
+    pub fn set_tcp_keepalive(
+        &mut self,
+        delay: Option<i64>,
+    ) -> Result<(), DriverError> {
         let enable = delay.is_some();
         let delay = cass_try_into!(delay.unwrap_or(0));
         unsafe {
-            cass_cluster_set_tcp_keepalive(self.as_raw(), enable.into(), delay)
+            cass_cluster_set_tcp_keepalive(self.inner(), enable.into(), delay)
         };
 
         CassError::Ok
@@ -689,11 +737,11 @@ impl CassCluster {
     pub fn set_connection_heartbeat_interval(
         &mut self,
         interval: i64,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let interval = cass_try_into!(interval);
         unsafe {
             cass_cluster_set_connection_heartbeat_interval(
-                self.as_raw(),
+                self.inner(),
                 interval,
             )
         };
@@ -706,10 +754,13 @@ impl CassCluster {
     /// for reconnection.
     ///
     /// The default value is 60 seconds.
-    pub fn set_connection_idle_timeout(&mut self, timeout: i64) -> CassError {
+    pub fn set_connection_idle_timeout(
+        &mut self,
+        timeout: i64,
+    ) -> Result<(), DriverError> {
         let timeout = cass_try_into!(timeout);
         unsafe {
-            cass_cluster_set_connection_idle_timeout(self.as_raw(), timeout)
+            cass_cluster_set_connection_idle_timeout(self.inner(), timeout)
         };
 
         CassError::Ok
@@ -723,10 +774,11 @@ impl CassCluster {
     /// present, on a write timeout if a logged batch request failed to write
     /// the batch log, and on a unavailable error it retries using a new host.
     /// In all other cases the default policy will return an error.
-    pub fn set_retry_policy(&mut self, policy: &CassRetryPolicy) -> CassError {
-        unsafe {
-            cass_cluster_set_retry_policy(self.as_raw(), policy.as_raw())
-        };
+    pub fn set_retry_policy(
+        &mut self,
+        policy: &CassRetryPolicy,
+    ) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_retry_policy(self.inner(), policy.inner()) };
 
         CassError::Ok
     }
@@ -739,8 +791,8 @@ impl CassCluster {
     /// startup overhead of short-lived sessions.
     ///
     /// The default value is `true` (enabled).
-    pub fn set_use_schema(&mut self, enabled: bool) -> CassError {
-        unsafe { cass_cluster_set_use_schema(self.as_raw(), enabled.into()) };
+    pub fn set_use_schema(&mut self, enabled: bool) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_use_schema(self.inner(), enabled.into()) };
 
         CassError::Ok
     }
@@ -755,10 +807,10 @@ impl CassCluster {
     pub fn set_use_randomized_contact_points(
         &mut self,
         enabled: bool,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         unsafe {
             cass_cluster_set_use_randomized_contact_points(
-                self.as_raw(),
+                self.inner(),
                 enabled.into(),
             )
         }
@@ -774,12 +826,12 @@ impl CassCluster {
         &mut self,
         delay: i64,
         max_speculative_executions: usize,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let max_speculative_executions =
             cass_try_into!(max_speculative_executions);
         unsafe {
             cass_cluster_set_constant_speculative_execution_policy(
-                self.as_raw(),
+                self.inner(),
                 delay,
                 max_speculative_executions,
             )
@@ -790,9 +842,11 @@ impl CassCluster {
     /// Disables speculative executions.
     ///
     /// This is the default behavior.
-    pub fn set_no_speculative_execution_policy(&mut self) -> CassError {
+    pub fn set_no_speculative_execution_policy(
+        &mut self,
+    ) -> Result<(), DriverError> {
         unsafe {
-            cass_cluster_set_no_speculative_execution_policy(self.as_raw())
+            cass_cluster_set_no_speculative_execution_policy(self.inner())
         }
         .into()
     }
@@ -807,10 +861,13 @@ impl CassCluster {
     /// marshalling of requests prior to sending.
     ///
     /// The default value is [`u32::MAX`].
-    pub fn set_max_reusable_write_objects(&mut self, num: usize) -> CassError {
+    pub fn set_max_reusable_write_objects(
+        &mut self,
+        num: usize,
+    ) -> Result<(), DriverError> {
         let num = cass_try_into!(num);
         unsafe {
-            cass_cluster_set_max_reusable_write_objects(self.as_raw(), num)
+            cass_cluster_set_max_reusable_write_objects(self.inner(), num)
         }
         .into()
     }
@@ -818,9 +875,12 @@ impl CassCluster {
     /// Enables/Disables preparation of statements on all available hosts.
     ///
     /// The default value is `true`.
-    pub fn set_prepare_on_all_hosts(&mut self, enabled: bool) -> CassError {
+    pub fn set_prepare_on_all_hosts(
+        &mut self,
+        enabled: bool,
+    ) -> Result<(), DriverError> {
         unsafe {
-            cass_cluster_set_prepare_on_all_hosts(self.as_raw(), enabled.into())
+            cass_cluster_set_prepare_on_all_hosts(self.inner(), enabled.into())
         }
         .into()
     }
@@ -838,10 +898,10 @@ impl CassCluster {
     pub fn set_prepare_on_up_or_add_host(
         &mut self,
         enabled: bool,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         unsafe {
             cass_cluster_set_prepare_on_up_or_add_host(
-                self.as_raw(),
+                self.inner(),
                 enabled.into(),
             )
         }
@@ -855,8 +915,8 @@ impl CassCluster {
     /// `BATCH`, `DELETE`, `SELECT`, and `UPDATE` CQL operations.
     ///
     /// The default value is `false`.
-    pub fn set_no_compact(&mut self, enabled: bool) -> CassError {
-        unsafe { cass_cluster_set_no_compact(self.as_raw(), enabled.into()) }
+    pub fn set_no_compact(&mut self, enabled: bool) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_no_compact(self.inner(), enabled.into()) }
             .into()
     }
 
@@ -865,14 +925,17 @@ impl CassCluster {
     /// This is optional; however it provides the server with the application
     /// name that can aid in debugging issues with larger clusters where there
     /// are a lot of client (or application) connections.
-    pub fn set_application_name<T>(&mut self, name: T) -> CassError
+    pub fn set_application_name<T>(
+        &mut self,
+        name: T,
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
         let name = name.as_ref();
         let len = name.len();
         let ptr = name.as_ptr() as *const c_char;
-        unsafe { cass_cluster_set_application_name_n(self.as_raw(), ptr, len) };
+        unsafe { cass_cluster_set_application_name_n(self.inner(), ptr, len) };
 
         CassError::Ok
     }
@@ -883,7 +946,10 @@ impl CassCluster {
     /// version that can aid in debugging issues with larger clusters where
     /// there are a lot of client (or application) connections that may have
     /// different versions in use.
-    pub fn set_application_version<T>(&mut self, version: T) -> CassError
+    pub fn set_application_version<T>(
+        &mut self,
+        version: T,
+    ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
@@ -891,7 +957,7 @@ impl CassCluster {
         let len = version.len();
         let ptr = version.as_ptr() as *const c_char;
         unsafe {
-            cass_cluster_set_application_version_n(self.as_raw(), ptr, len)
+            cass_cluster_set_application_version_n(self.inner(), ptr, len)
         };
 
         CassError::Ok
@@ -904,8 +970,8 @@ impl CassCluster {
     /// there are a lot of client (or application) connections.
     ///
     /// Default value is a random UUID v4.
-    pub fn set_client_id(&mut self, id: CassUuid) -> CassError {
-        unsafe { cass_cluster_set_client_id(self.as_raw(), id.as_raw()) };
+    pub fn set_client_id(&mut self, id: CassUuid) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_client_id(self.inner(), id.inner()) };
 
         CassError::Ok
     }
@@ -919,10 +985,10 @@ impl CassCluster {
     pub fn set_monitor_reporting_interval(
         &mut self,
         interval: i64,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let interval = cass_try_into!(interval);
         unsafe {
-            cass_cluster_set_monitor_reporting_interval(self.as_raw(), interval)
+            cass_cluster_set_monitor_reporting_interval(self.inner(), interval)
         };
 
         CassError::Ok
@@ -941,11 +1007,11 @@ impl CassCluster {
     pub fn set_histogram_refresh_interval(
         &mut self,
         interval: NonZeroI64,
-    ) -> CassError {
+    ) -> Result<(), DriverError> {
         let interval = cass_try_into!(interval.get());
 
         unsafe {
-            cass_cluster_set_histogram_refresh_interval(self.as_raw(), interval)
+            cass_cluster_set_histogram_refresh_interval(self.inner(), interval)
         }
         .into()
     }
@@ -955,21 +1021,24 @@ impl CassCluster {
     ///
     /// The default value is monotonically increasing, client-side timestamp
     /// generator.
-    pub fn set_timestamp_gen(&mut self, gen: &CassTimestampGen) -> CassError {
-        unsafe { cass_cluster_set_timestamp_gen(self.as_raw(), gen.as_raw()) };
+    pub fn set_timestamp_gen(
+        &mut self,
+        gen: &TimestampGen,
+    ) -> Result<(), DriverError> {
+        unsafe { cass_cluster_set_timestamp_gen(self.inner(), gen.inner()) };
 
         CassError::Ok
     }
 }
 
-impl Default for CassCluster {
+impl Default for Cluster {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Drop for CassCluster {
+impl Drop for Cluster {
     fn drop(&mut self) {
-        unsafe { cass_cluster_free(self.as_raw()) }
+        unsafe { cass_cluster_free(self.inner()) }
     }
 }

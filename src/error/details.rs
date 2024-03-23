@@ -1,19 +1,13 @@
 use std::ffi::c_char;
-use std::slice;
 use std::fmt::{
     self,
     Debug,
+    Display,
     Formatter,
 };
+use std::slice;
 
-use crate::convert::MaybeInto;
-use crate::driver::cass::{
-    CassBool,
-    CassConsistency,
-    CassError,
-    CassWriteType,
-};
-use crate::driver::ffi::{
+use crate::ffi::{
     cass_error_num_arg_types,
     cass_error_result_arg_type,
     cass_error_result_code,
@@ -29,16 +23,28 @@ use crate::driver::ffi::{
     cass_error_result_write_type,
     enum_CassError_,
     enum_CassError__CASS_OK as CASS_OK,
+    enum_cass_bool_t_cass_false as CASS_FALSE,
     struct_CassErrorResult_,
 };
+use crate::{
+    Consistency,
+    DriverErrorKind,
+    WriteType,
+};
 
-/// An error result of a request.
+/// Additional details about a driver error.
+///
+/// It is available for server errors only.
 #[repr(transparent)]
-pub struct CassErrorResult(*const struct_CassErrorResult_);
+pub struct DriverErrorDetails(*const struct_CassErrorResult_);
 
-impl CassErrorResult {
-    /// Wraps a raw pointer to the driver's error result object.
-    pub fn new(error: *const struct_CassErrorResult_) -> Option<Self> {
+impl DriverErrorDetails {
+    /// Creates a `DriverErrorDetails` from the driver object.
+    ///
+    /// Returns `None` if the driver object is null.
+    pub(crate) fn from_driver(
+        error: *const struct_CassErrorResult_,
+    ) -> Option<Self> {
         if error.is_null() {
             None
         } else {
@@ -47,29 +53,39 @@ impl CassErrorResult {
     }
 
     /// Returns the raw pointer to the driver's error result object.
-    pub fn as_raw(&self) -> *const struct_CassErrorResult_ {
+    pub(crate) fn inner(&self) -> *const struct_CassErrorResult_ {
         self.0
     }
 
     /// Returns an error code for this error result.
     ///
     /// This error code will always have an server error source
-    /// (`CassError::Server*`).
-    pub fn code(&self) -> CassError {
-        unsafe { cass_error_result_code(self.as_raw()).into() }
+    /// (`DriverErrorKind::Server*`).
+    ///
+    /// The method is internal because the error code is available through the
+    /// [`DriverError`] struct and duplication it here would make API more
+    /// confusing.
+    pub(crate) fn code(&self) -> DriverErrorKind {
+        let code = unsafe { cass_error_result_code(self.inner()) };
+
+        DriverErrorKind::from_driver(code)
+            .expect("unexpected success error code")
     }
 
     /// Returns the consistency level.
     ///
     /// This is only available for the following error codes:
     ///
-    /// - [`CassError::ServerReadTimeout`]
-    /// - [`CassError::ServerWriteTimeout`]
-    /// - [`CassError::ServerReadFailure`]
-    /// - [`CassError::ServerWriteFailure`]
-    /// - [`CassError::ServerUnavailable`]
-    pub fn consistency(&self) -> Option<CassConsistency> {
-        unsafe { cass_error_result_consistency(self.as_raw()).maybe_into() }
+    /// - [`DriverErrorKind::ServerReadTimeout`]
+    /// - [`DriverErrorKind::ServerWriteTimeout`]
+    /// - [`DriverErrorKind::ServerReadFailure`]
+    /// - [`DriverErrorKind::ServerWriteFailure`]
+    /// - [`DriverErrorKind::ServerUnavailable`]
+    pub fn consistency(&self) -> Option<Consistency> {
+        let consistency =
+            unsafe { cass_error_result_consistency(self.inner()) };
+
+        Consistency::from_driver(consistency)
     }
 
     /// Returns the actual number of received responses, received
@@ -77,13 +93,13 @@ impl CassErrorResult {
     ///
     /// This is only available for the following error codes:
     ///
-    /// - [`CassError::ServerReadTimeout`]
-    /// - [`CassError::ServerWriteTimeout`]
-    /// - [`CassError::ServerReadFailure`]
-    /// - [`CassError::ServerWriteFailure`]
-    /// - [`CassError::ServerUnavailable`]
+    /// - [`DriverErrorKind::ServerReadTimeout`]
+    /// - [`DriverErrorKind::ServerWriteTimeout`]
+    /// - [`DriverErrorKind::ServerReadFailure`]
+    /// - [`DriverErrorKind::ServerWriteFailure`]
+    /// - [`DriverErrorKind::ServerUnavailable`]
     pub fn responses_received(&self) -> Option<usize> {
-        let n = unsafe { cass_error_result_responses_received(self.as_raw()) };
+        let n = unsafe { cass_error_result_responses_received(self.inner()) };
 
         usize::try_from(n).ok()
     }
@@ -93,13 +109,13 @@ impl CassErrorResult {
     ///
     /// This is only available for the following error codes:
     ///
-    /// - [`CassError::ServerReadTimeout`]
-    /// - [`CassError::ServerWriteTimeout`]
-    /// - [`CassError::ServerReadFailure`]
-    /// - [`CassError::ServerWriteFailure`]
-    /// - [`CassError::ServerUnavailable`]
+    /// - [`DriverErrorKind::ServerReadTimeout`]
+    /// - [`DriverErrorKind::ServerWriteTimeout`]
+    /// - [`DriverErrorKind::ServerReadFailure`]
+    /// - [`DriverErrorKind::ServerWriteFailure`]
+    /// - [`DriverErrorKind::ServerUnavailable`]
     pub fn responses_required(&self) -> Option<usize> {
-        let n = unsafe { cass_error_result_responses_required(self.as_raw()) };
+        let n = unsafe { cass_error_result_responses_required(self.inner()) };
 
         usize::try_from(n).ok()
     }
@@ -109,10 +125,10 @@ impl CassErrorResult {
     ///
     /// This is only available for the following error codes:
     ///
-    /// - [`CassError::ServerReadFailure`]
-    /// - [`CassError::ServerWriteFailure`]
+    /// - [`DriverErrorKind::ServerReadFailure`]
+    /// - [`DriverErrorKind::ServerWriteFailure`]
     pub fn failures_count(&self) -> Option<usize> {
-        let n = unsafe { cass_error_result_num_failures(self.as_raw()) };
+        let n = unsafe { cass_error_result_num_failures(self.inner()) };
 
         usize::try_from(n).ok()
     }
@@ -122,60 +138,63 @@ impl CassErrorResult {
     ///
     /// This is only available for the following error codes:
     ///
-    /// - [`CassError::ServerReadTimeout`]
-    /// - [`CassError::ServerReadFailure`]
+    /// - [`DriverErrorKind::ServerReadTimeout`]
+    /// - [`DriverErrorKind::ServerReadFailure`]
     pub fn is_data_present(&self) -> Option<bool> {
-        if self.code() != CassError::ServerReadTimeout
-            && self.code() != CassError::ServerReadFailure
+        if self.code() != DriverErrorKind::ServerReadTimeout
+            && self.code() != DriverErrorKind::ServerReadFailure
         {
             return None;
         }
 
-        let b = unsafe { cass_error_result_data_present(self.as_raw()) };
+        let present = unsafe { cass_error_result_data_present(self.inner()) };
 
-        Some(CassBool::new(b).into())
+        Some(present != CASS_FALSE)
     }
 
     /// Returns the write type of a request.
     ///
     /// This is only available for the following error codes:
     ///
-    /// - [`CassError::ServerWriteTimeout`]
-    /// - [`CassError::ServerWriteFailure`]
-    pub fn write_type(&self) -> Option<CassWriteType> {
-        unsafe { cass_error_result_write_type(self.as_raw()) }.maybe_into()
+    /// - [`DriverErrorKind::ServerWriteTimeout`]
+    /// - [`DriverErrorKind::ServerWriteFailure`]
+    pub fn write_type(&self) -> Option<WriteType> {
+        let write_type = unsafe { cass_error_result_write_type(self.inner()) };
+
+        WriteType::from_driver(write_type)
     }
 
     /// Returns the affected keyspace.
     ///
     /// This is only available for the following error codes:
     ///
-    /// - [`CassError::ServerAlreadyExists`]
-    /// - [`CassError::ServerFunctionFailure`]
+    /// - [`DriverErrorKind::ServerAlreadyExists`]
+    /// - [`DriverErrorKind::ServerFunctionFailure`]
     pub fn keyspace(&self) -> Option<String> {
         get_string_lossy(|s, l| unsafe {
-            cass_error_result_keyspace(self.as_raw(), s, l)
+            cass_error_result_keyspace(self.inner(), s, l)
         })
     }
 
     /// Returns the affected table.
     ///
-    /// This is only available for the [`CassError::ServerAlreadyExists`] error.
+    /// This is only available for the [`DriverErrorKind::ServerAlreadyExists`]
+    /// error.
     pub fn table(&self) -> Option<String> {
         get_string_lossy(|s, l| unsafe {
-            cass_error_result_table(self.as_raw(), s, l)
+            cass_error_result_table(self.inner(), s, l)
         })
     }
 
     /// Returns the affected function name and its argument types.
     ///
-    /// This is only available for the [`CassError::ServerFunctionFailure`]
-    /// error.
-    pub fn function(&self) -> Option<(String, Vec<String>)> {
+    /// This is only available for the
+    /// [`DriverErrorKind::ServerFunctionFailure`] error.
+    pub fn function(&self) -> Option<FunctionErrorDetails> {
         get_string_lossy(|s, l| unsafe {
-            cass_error_result_function(self.as_raw(), s, l)
+            cass_error_result_function(self.inner(), s, l)
         })
-        .map(|name| (name, self.arg_types()))
+        .map(|name| FunctionErrorDetails::new(name, self.arg_types()))
     }
 
     /// Returns the argument types for the function failure error.
@@ -190,25 +209,31 @@ impl CassErrorResult {
 
     /// Returns the number of argument types for the function failure error.
     fn num_arg_types(&self) -> usize {
-        unsafe { cass_error_num_arg_types(self.as_raw()) }
+        unsafe { cass_error_num_arg_types(self.inner()) }
     }
 
     /// Returns the argument type at the specified index for the function
     /// failure error.
     fn arg_type(&self, index: usize) -> Option<String> {
         get_string_lossy(|s, l| unsafe {
-            cass_error_result_arg_type(self.as_raw(), index, s, l)
+            cass_error_result_arg_type(self.inner(), index, s, l)
         })
     }
 }
 
-impl Drop for CassErrorResult {
+impl Drop for DriverErrorDetails {
     fn drop(&mut self) {
-        unsafe { cass_error_result_free(self.as_raw()) }
+        unsafe { cass_error_result_free(self.inner()) }
     }
 }
 
-impl Debug for CassErrorResult {
+impl Display for DriverErrorDetails {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.code())
+    }
+}
+
+impl Debug for DriverErrorDetails {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("CassErrorResult")
             .field("code", &self.code())
@@ -222,6 +247,31 @@ impl Debug for CassErrorResult {
             .field("table", &self.table())
             .field("function", &self.function())
             .finish()
+    }
+}
+
+/// Details of a function error.
+#[derive(Debug, Clone)]
+pub struct FunctionErrorDetails {
+    /// The name of the function.
+    pub name:      String,
+    /// The argument types of the function.
+    pub arg_types: Vec<String>,
+}
+
+impl FunctionErrorDetails {
+    /// Creates a new `FunctionErrorDetails` object.
+    pub fn new(name: String, arg_types: Vec<String>) -> Self {
+        Self {
+            name,
+            arg_types,
+        }
+    }
+}
+
+impl Display for FunctionErrorDetails {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}({})", self.name, self.arg_types.join(", "))
     }
 }
 

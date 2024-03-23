@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::driver::ffi::{
+use crate::ffi::{
     cass_session_free,
     cass_session_new,
     struct_CassSession_,
@@ -13,23 +13,23 @@ use crate::driver::ffi::{
 /// changes (topology and schema). Each session also maintains multiple pools of
 /// connections to cluster nodes which are used to query the cluster.
 #[derive(Clone)]
-pub struct CassSession(Arc<CassSessionWrapper>);
+pub struct Session(Arc<SessionWrapper>);
 
-impl CassSession {
+impl Session {
     /// Creates a new Cassandra session.
     pub fn new() -> Self {
         let session = unsafe { cass_session_new() };
 
-        Self(Arc::new(CassSessionWrapper(session)))
+        Self(Arc::new(SessionWrapper(session)))
     }
 
     /// Returns the raw pointer to the session object.
-    pub fn as_raw(&self) -> *mut struct_CassSession_ {
-        self.0.as_raw()
+    pub(crate) fn inner(&self) -> *mut struct_CassSession_ {
+        self.0.inner()
     }
 }
 
-impl Default for CassSession {
+impl Default for Session {
     /// Creates a new Cassandra session.
     fn default() -> Self {
         Self::new()
@@ -37,21 +37,20 @@ impl Default for CassSession {
 }
 
 #[repr(transparent)]
-struct CassSessionWrapper(*mut struct_CassSession_);
+struct SessionWrapper(*mut struct_CassSession_);
 
-impl CassSessionWrapper {
+impl SessionWrapper {
     /// Returns the raw pointer to the session object.
-    pub fn as_raw(&self) -> *mut struct_CassSession_ {
+    pub fn inner(&self) -> *mut struct_CassSession_ {
         self.0
     }
 }
 
-impl Drop for CassSessionWrapper {
+impl Drop for SessionWrapper {
     fn drop(&mut self) {
-        unsafe { cass_session_free(self.as_raw()) }
+        unsafe { cass_session_free(self.inner()) }
     }
 }
 
-unsafe impl Send for CassSessionWrapper {}
-unsafe impl Sync for CassSessionWrapper {}
-
+unsafe impl Send for SessionWrapper {}
+unsafe impl Sync for SessionWrapper {}

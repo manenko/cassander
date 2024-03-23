@@ -13,12 +13,12 @@ use std::ptr::{
     null_mut,
 };
 
-use crate::driver::cass::CassError;
-use crate::driver::ffi::cass_alloc_set_functions;
+use crate::ffi::cass_alloc_set_functions;
+use crate::DriverError;
 
 /// Configures the underlying DataStax C++ driver for Apache Cassandra to use
 /// Rust global memory allocator instead of its own memory management functions.
-pub fn cass_use_rust_global_allocator() -> CassError {
+pub fn use_rust_global_allocator() -> Result<(), DriverError> {
     unsafe {
         cass_alloc_set_functions(
             Some(rust_global_allocator_alloc),
@@ -27,7 +27,7 @@ pub fn cass_use_rust_global_allocator() -> CassError {
         );
     }
 
-    CassError::Ok
+    Ok(())
 }
 
 unsafe extern "C" fn rust_global_allocator_alloc(size: usize) -> *mut c_void {
@@ -192,9 +192,8 @@ impl MemoryBlock {
 
     /// Returns the layout used during the allocation of this memory block.
     pub fn layout(&self) -> Layout {
-        Self::read_layout(self.block_start()).expect(
-            "the already allocated memory blocks must have a valid layout",
-        )
+        Self::read_layout(self.block_start())
+            .expect("allocated memory blocks must have a valid layout")
     }
 
     fn read_layout(ptr: *const u8) -> Option<Layout> {

@@ -1,10 +1,6 @@
 use std::ffi::c_char;
 
-use crate::driver::cass::{
-    CassError,
-    CassSslVerifyFlags,
-};
-use crate::driver::ffi::{
+use crate::ffi::{
     cass_ssl_free,
     cass_ssl_new,
     cass_ssl_new_no_lib_init,
@@ -13,17 +9,23 @@ use crate::driver::ffi::{
     cass_ssl_set_verify_flags,
     struct_CassSsl_,
 };
+use crate::{
+    to_result,
+    DriverError,
+    DriverErrorKind,
+    SslVerifyFlags,
+};
 
 // TODO: Check if `cass_ssl_new` and `cass_ssl_new_no_lib_init` return NULL
 //       pointers in case of an error.
 
 /// Describes the SSL configuration of a cluster.
-pub struct CassSsl(*mut struct_CassSsl_);
+pub struct Ssl(*mut struct_CassSsl_);
 
-impl CassSsl {
+impl Ssl {
     /// Creates a new SSL configuration.
     pub fn new() -> Self {
-        unsafe { CassSsl(cass_ssl_new()) }
+        unsafe { Ssl(cass_ssl_new()) }
     }
 
     /// Creates a new SSL context without initializing the underlying library
@@ -45,36 +47,45 @@ impl CassSsl {
     /// - [`CRYPTO_set_id_callback`](https://linux.die.net/man/3/crypto_set_id_callback)
     /// </div>
     pub fn new_no_lib_init() -> Self {
-        unsafe { CassSsl(cass_ssl_new_no_lib_init()) }
+        unsafe { Ssl(cass_ssl_new_no_lib_init()) }
     }
 
     /// Returns a raw pointer to the SSL configuration.
-    pub fn as_raw(&self) -> *mut struct_CassSsl_ {
+    pub(crate) fn inner(&self) -> *mut struct_CassSsl_ {
         self.0
     }
 
     /// Adds a trusted certificate in the PEM format.
     ///
     /// This is used to verify the peer's certificate.
-    pub fn add_trusted_cert<T>(&mut self, cert: T) -> CassError
+    pub fn add_trusted_cert<T>(&mut self, cert: T) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
         let cert = cert.as_ref();
         let len = cert.len();
         let ptr = cert.as_ptr() as *const c_char;
-        unsafe { cass_ssl_set_cert_n(self.as_raw(), ptr, len) }.into()
+        let code = unsafe { cass_ssl_set_cert_n(self.inner(), ptr, len) };
+
+        to_result(code)
     }
 
     /// Sets the flags used to verify the peer's certificate.
-    pub fn set_verify_flags(&mut self, flags: CassSslVerifyFlags) -> CassError {
-        if let Ok(flags) = u32::from(flags).try_into() {
-            unsafe { cass_ssl_set_verify_flags(self.as_raw(), flags) };
-            CassError::Ok
-        } else {
-            // Should never happen, though.
-            CassError::LibBadParams
-        }
+    pub fn set_verify_flags(
+        &mut self,
+        flags: SslVerifyFlags,
+    ) -> Result<(), DriverError> {
+        let flags = i32::try_from(flags.to_driver()).map_err(|_| {
+            // This should never happen, though.
+            DriverError::with_message(
+                DriverErrorKind::LibBadParams,
+                format!("invalid SSL verify flags {}", flags.inner()),
+            )
+        })?;
+
+        unsafe { cass_ssl_set_verify_flags(self.inner(), flags) };
+
+        Ok(())
     }
 
     /// Sets the client-side certificate chain in the PEM format.
@@ -82,20 +93,26 @@ impl CassSsl {
     /// This is used to authenticate the client on the server-side. This should
     /// contain the entire certificate chain starting with the certificate
     /// itself.
-    pub fn set_cert<T>(&mut self, cert: T) -> CassError
+    pub fn set_cert<T>(&mut self, cert: T) -> Result<(), DriverError>
     where
         T: AsRef<str>,
     {
         let cert = cert.as_ref();
         let len = cert.len();
         let ptr = cert.as_ptr() as *const c_char;
-        unsafe { cass_ssl_set_cert_n(self.as_raw(), ptr, len) }.into()
+        let code = unsafe { cass_ssl_set_cert_n(self.inner(), ptr, len) };
+
+        to_result(code)
     }
 
     /// Sets the client-side private key in the PEM format.
     ///
     /// This is used to authenticate the client on the server-side.
-    pub fn set_private_key<A, B>(&mut self, key: A, password: B) -> CassError
+    pub fn set_private_key<A, B>(
+        &mut self,
+        key: A,
+        password: B,
+    ) -> Result<(), DriverError>
     where
         A: AsRef<str>,
         B: AsRef<str>,
@@ -108,30 +125,31 @@ impl CassSsl {
         let password_len = password.len();
         let password_ptr = password.as_ptr() as *const c_char;
 
-        unsafe {
+        let code = unsafe {
             cass_ssl_set_private_key_n(
-                self.as_raw(),
+                self.inner(),
                 key_ptr,
                 key_len,
                 password_ptr,
                 password_len,
             )
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 }
 
-impl Default for CassSsl {
+impl Default for Ssl {
     fn default() -> Self {
         Self::new()
     }
 }
 
-unsafe impl Send for CassSsl {}
-unsafe impl Sync for CassSsl {}
+unsafe impl Send for Ssl {}
+unsafe impl Sync for Ssl {}
 
-impl Drop for CassSsl {
+impl Drop for Ssl {
     fn drop(&mut self) {
-        unsafe { cass_ssl_free(self.as_raw()) }
+        unsafe { cass_ssl_free(self.inner()) }
     }
 }

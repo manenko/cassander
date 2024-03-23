@@ -1,4 +1,4 @@
-use crate::driver::ffi::{
+use crate::ffi::{
     cass_retry_policy_default_new,
     cass_retry_policy_fallthrough_new,
     cass_retry_policy_free,
@@ -8,9 +8,9 @@ use crate::driver::ffi::{
 
 /// A retry policy that defines a retry schedule for a query.
 #[repr(transparent)]
-pub struct CassRetryPolicy(*mut struct_CassRetryPolicy_);
+pub struct RetryPolicy(*mut struct_CassRetryPolicy_);
 
-impl CassRetryPolicy {
+impl RetryPolicy {
     /// Creates a new default retry policy.
     ///
     /// This policy retries queries in the following cases:
@@ -26,6 +26,7 @@ impl CassRetryPolicy {
     /// This policy always uses the query's original consistency level.
     pub fn new() -> Self {
         let policy = unsafe { cass_retry_policy_default_new() };
+
         Self(policy)
     }
 
@@ -35,6 +36,7 @@ impl CassRetryPolicy {
     /// is always returned.
     pub fn fallthrough() -> Self {
         let policy = unsafe { cass_retry_policy_fallthrough_new() };
+
         Self(policy)
     }
 
@@ -45,9 +47,9 @@ impl CassRetryPolicy {
     ///
     /// The function returns `None` if the `child_policy` is a logging retry
     /// policy.
-    pub fn logging(child_policy: &CassRetryPolicy) -> Option<Self> {
+    pub fn logging(child_policy: &RetryPolicy) -> Option<Self> {
         let policy =
-            unsafe { cass_retry_policy_logging_new(child_policy.as_raw()) };
+            unsafe { cass_retry_policy_logging_new(child_policy.inner()) };
 
         if policy.is_null() {
             None
@@ -57,12 +59,12 @@ impl CassRetryPolicy {
     }
 
     /// Returns a raw pointer to the retry policy driver object.
-    pub fn as_raw(&self) -> *mut struct_CassRetryPolicy_ {
+    pub(crate) fn inner(&self) -> *mut struct_CassRetryPolicy_ {
         self.0
     }
 }
 
-impl Default for CassRetryPolicy {
+impl Default for RetryPolicy {
     /// Creates a new default retry policy.
     ///
     /// This policy retries queries in the following cases:
@@ -81,8 +83,8 @@ impl Default for CassRetryPolicy {
     }
 }
 
-impl Drop for CassRetryPolicy {
+impl Drop for RetryPolicy {
     fn drop(&mut self) {
-        unsafe { cass_retry_policy_free(self.as_raw()) }
+        unsafe { cass_retry_policy_free(self.inner()) }
     }
 }

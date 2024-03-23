@@ -4,7 +4,7 @@ use std::fmt::{
     Formatter,
 };
 
-use crate::driver::ffi::{
+use crate::ffi::{
     CASS_VERSION_MAJOR,
     CASS_VERSION_MINOR,
     CASS_VERSION_PATCH,
@@ -13,7 +13,7 @@ use crate::driver::ffi::{
 
 /// The version of the DataStax C++ driver for Apache Cassandra.
 #[derive(Debug, Clone)]
-pub struct CassDriverVersion {
+pub struct DriverVersion {
     /// Major version number.
     pub major:  u32,
     /// Minor version number.
@@ -24,7 +24,7 @@ pub struct CassDriverVersion {
     pub suffix: Option<String>,
 }
 
-impl CassDriverVersion {
+impl DriverVersion {
     /// Creates a new version.
     pub fn new(
         major: u32,
@@ -40,7 +40,8 @@ impl CassDriverVersion {
         }
     }
 
-    /// Returns the version of the DataStax C++ driver for Apache Cassandra.
+    /// Returns the version of the DataStax C++ driver for Apache Cassandra this
+    /// crate was build against.
     pub fn current() -> Self {
         Self::new(
             CASS_VERSION_MAJOR,
@@ -63,7 +64,7 @@ impl CassDriverVersion {
     }
 }
 
-impl Display for CassDriverVersion {
+impl Display for DriverVersion {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}.{}.{}", self.major, self.minor, self.patch)?;
         if let Some(suffix) = &self.suffix {

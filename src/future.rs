@@ -1,15 +1,7 @@
 use std::slice;
 
-use thiserror::Error;
-
-use crate::driver::cass::{
-    CassBool,
-    CassError,
-    CassErrorResult,
-    CassSession,
-    CassUuid,
-};
-use crate::driver::ffi::{
+use crate::cql::CqlUuid;
+use crate::ffi::{
     cass_future_error_code,
     cass_future_error_message,
     cass_future_free,
@@ -18,8 +10,16 @@ use crate::driver::ffi::{
     cass_future_tracing_id,
     cass_future_wait,
     cass_future_wait_timed,
+    enum_cass_bool_t_cass_false as CASS_FALSE,
     struct_CassFuture_,
     struct_CassUuid_,
+};
+use crate::{
+    to_result,
+    DriverError,
+    DriverErrorDetails,
+    DriverErrorKind,
+    Session,
 };
 
 // TODO: cass_future_get_prepared
@@ -98,91 +98,24 @@ use crate::driver::ffi::{
 // So we need the type returned by the `poll` method to be able to costruct
 // itself from the druver's future. Which means a custom trait. The method(-s)
 // of this trait will be called from the `poll` method in case of a successful
-// future result. The trait's method(-s) may also return an error. Which in turn
-// means we need a custom error type. The type should be constructable from the
-// driver's error object.
-
-/// An error result of a future.
-#[derive(Debug, Error)]
-#[error("{}", .message)]
-pub struct CassFutureError {
-    /// The error code.
-    pub code:    CassError,
-    /// The error message.
-    pub message: String,
-    /// Additional error details which are available for server errors.
-    pub details: Option<Box<CassErrorResult>>,
-}
-
-impl CassFutureError {
-    /// Creates a new error result of a future.
-    pub fn new<T>(
-        code: CassError,
-        message: T,
-        details: Option<Box<CassErrorResult>>,
-    ) -> Self
-    where
-        T: Into<String>,
-    {
-        Self {
-            code,
-            message: message.into(),
-            details,
-        }
-    }
-
-    /// Creates a new error result of a future from a driver error and the error
-    /// message.
-    ///
-    /// Returns `None` if the error code is [`CassError::Ok`].
-    ///
-    /// Use this method when the error is not a server error and you want to
-    /// provide a custom error message for it.
-    ///
-    /// When there is no custom error message, use the [`Into`] implementation
-    /// instead.
-    pub fn from_cass_error<T>(code: CassError, message: T) -> Option<Self>
-    where
-        T: Into<String>,
-    {
-        if code.is_ok() {
-            None
-        } else {
-            Some(Self::new(code, message, None))
-        }
-    }
-}
-
-impl From<CassError> for Option<CassFutureError> {
-    /// Creates a new error result of a future from a driver error.
-    ///
-    /// Returns `None` if the error code is [`CassError::Ok`].
-    ///
-    /// The method uses default error messages for the driver errors. In case
-    /// you want to provide a custom error message, use the
-    /// [`CassFutureError::from_cass_error`] method instead.
-    fn from(code: CassError) -> Self {
-        CassFutureError::from_cass_error(code, code.to_string())
-    }
-}
 
 /// The future result of a DataStax C++ driver operation.
 ///
 /// It can represent a result if the operation completed successfully or an
 /// error if the operation failed.
 #[must_use]
-pub struct CassFuture {
+pub struct DriverFuture {
     /// The driver's future object.
     inner:   *mut struct_CassFuture_,
     /// The session that created the future.
     ///
     /// The future must not outlive the session.
-    session: CassSession,
+    session: Session,
 }
 
-impl CassFuture {
+impl DriverFuture {
     /// Creates a new future object.
-    pub fn new(inner: *mut struct_CassFuture_, session: CassSession) -> Self {
+    pub fn new(inner: *mut struct_CassFuture_, session: Session) -> Self {
         assert!(
             !inner.is_null(),
             "the driver's future object must not be null"
@@ -194,20 +127,22 @@ impl CassFuture {
     }
 
     /// Returns the raw pointer to the future object.
-    pub fn as_raw(&self) -> *mut struct_CassFuture_ {
+    pub(crate) fn inner(&self) -> *mut struct_CassFuture_ {
         self.inner
     }
 
     /// Checks whether the future has been completed.
     pub fn is_ready(&self) -> bool {
-        CassBool::new(unsafe { cass_future_ready(self.as_raw()) }).into()
+        let ready = unsafe { cass_future_ready(self.inner()) };
+
+        ready != CASS_FALSE
     }
 
     /// Waits for the future to be set with either a result or error.
     ///
     /// This will block the current thread.
     pub fn wait(&self) {
-        unsafe { cass_future_wait(self.as_raw()) }
+        unsafe { cass_future_wait(self.inner()) }
     }
 
     /// The same as [`CassFuture::wait`] but timeouts after the given number of
@@ -216,37 +151,40 @@ impl CassFuture {
     /// Returns Ok(`false`) if returned due to timeout.
     ///
     /// Returns an error if the `timeout` overflows.
-    pub fn wait_with_timeout(&self, timeout: i64) -> Result<bool, CassError> {
-        let timeout =
-            timeout.try_into().map_err(|_| CassError::LibBadParams)?;
+    pub fn wait_with_timeout(&self, timeout: i64) -> Result<bool, DriverError> {
+        let timeout = timeout.try_into().map_err(|_| {
+            DriverError::with_kind(crate::DriverErrorKind::LibBadParams)
+        })?;
         let completed =
-            unsafe { cass_future_wait_timed(self.as_raw(), timeout) };
+            unsafe { cass_future_wait_timed(self.inner(), timeout) };
 
-        Ok(CassBool::new(completed).into())
+        Ok(completed != CASS_FALSE)
     }
 
-    /// Gets the error result from a future that failed as a result of a server
+    /// Gets the error details from a future that failed as a result of a server
     /// error.
     ///
     /// If the future is not ready this method will block the current thread and
     /// wait for the future to be set.
     ///
-    /// Returns `None` if the request was successful or the failure was not
+    /// Returns [`None`] if the request was successful or the failure was not
     /// caused by a server error.
-    pub fn get_error_result(&self) -> Option<CassErrorResult> {
-        let result = unsafe { cass_future_get_error_result(self.as_raw()) };
+    pub fn get_error_details(&self) -> Option<DriverErrorDetails> {
+        let result = unsafe { cass_future_get_error_result(self.inner()) };
 
-        CassErrorResult::new(result)
+        DriverErrorDetails::from_driver(result)
     }
 
-    /// Gets the error code from future.
+    /// Gets the error category from future.
     ///
     /// If the future is not ready this method will block the current thread and
     /// wait for the future to be set.
     ///
-    /// Returns [`CassError::Ok`] if the future has been completed successfully.
-    pub fn get_error_code(&self) -> CassError {
-        unsafe { cass_future_error_code(self.as_raw()) }.into()
+    /// Returns [`None`] if the future has been completed successfully.
+    pub fn get_error_kind(&self) -> Option<DriverErrorKind> {
+        let code = unsafe { cass_future_error_code(self.inner()) };
+
+        DriverErrorKind::from_driver(code)
     }
 
     /// Gets the error message from future.
@@ -260,7 +198,7 @@ impl CassFuture {
         let mut string_len = 0;
         unsafe {
             cass_future_error_message(
-                self.as_raw(),
+                self.inner(),
                 &mut string,
                 &mut string_len,
             )
@@ -291,26 +229,25 @@ impl CassFuture {
     /// Returns an error if there is no tracing ID associated with the request,
     /// or if the future does not represent a request sent to a Cassandra
     /// server.
-    pub fn get_tracing_id(&self) -> Result<CassUuid, CassError> {
+    pub fn get_tracing_id(&self) -> Result<CqlUuid, DriverError> {
         let mut id = struct_CassUuid_ {
             clock_seq_and_node: 0,
             time_and_version:   0,
         };
-        let code: CassError =
-            unsafe { cass_future_tracing_id(self.as_raw(), &mut id) }.into();
+        let code = unsafe { cass_future_tracing_id(self.inner(), &mut id) };
 
-        code.to_result().map(|_| id.into())
+        to_result::<()>(code).map(|_| CqlUuid::from_driver(id))
     }
 }
 
-impl Drop for CassFuture {
+impl Drop for DriverFuture {
     /// Frees the future instance.
     ///
     /// A future can be freed anytime.
     fn drop(&mut self) {
-        unsafe { cass_future_free(self.as_raw()) };
+        unsafe { cass_future_free(self.inner()) };
     }
 }
 
-unsafe impl Send for CassFuture {}
-unsafe impl Sync for CassFuture {}
+unsafe impl Send for DriverFuture {}
+unsafe impl Sync for DriverFuture {}

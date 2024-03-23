@@ -6,8 +6,7 @@ use std::fmt::{
 };
 use std::str::FromStr;
 
-use crate::driver::cass::CassError;
-use crate::driver::ffi::{
+use crate::ffi::{
     cass_uuid_from_string_n,
     cass_uuid_max_from_time,
     cass_uuid_min_from_time,
@@ -16,10 +15,15 @@ use crate::driver::ffi::{
     cass_uuid_version,
     struct_CassUuid_,
 };
+use crate::{
+    to_result,
+    DriverError,
+    DriverErrorKind,
+};
 
 /// A UUID version.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum CassUuidVersion {
+pub enum CqlUuidVersion {
     /// Time-based version 1 UUID.
     V1,
     /// Randomly generated version 4 UUID.
@@ -31,9 +35,9 @@ pub enum CassUuidVersion {
 /// Version 1 (time-based) or version 4 (random) UUID.
 #[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
-pub struct CassUuid(struct_CassUuid_);
+pub struct CqlUuid(struct_CassUuid_);
 
-impl CassUuid {
+impl CqlUuid {
     /// Creates a new UUID from the given components.
     ///
     /// The `time_and_version` parameter encodes the time and version part of
@@ -61,6 +65,11 @@ impl CassUuid {
         })
     }
 
+    /// Creates a new `Uuid` from the given driver object.
+    pub(crate) fn from_driver(value: struct_CassUuid_) -> Self {
+        Self(value)
+    }
+
     /// Sets the UUID to the minimum V1 value for the specified timestamp.
     ///
     /// The `timestamp` is in milliseconds since the Unix epoch (1970-01-01).
@@ -82,7 +91,7 @@ impl CassUuid {
     }
 
     /// Returns the underlying [`struct_CassUuid_`] driver object.
-    pub fn as_raw(&self) -> struct_CassUuid_ {
+    pub(crate) fn inner(&self) -> struct_CassUuid_ {
         self.0
     }
 
@@ -93,7 +102,7 @@ impl CassUuid {
     /// number of 100 nanosecond periods since 00:00:00 UTC, January 1, 1970
     /// (the Epoch). For version 4 the time part is randomly generated.
     pub fn time_and_version(&self) -> u64 {
-        self.as_raw().time_and_version
+        self.inner().time_and_version
     }
 
     /// Returns the clock sequence and node part of a UUID.
@@ -105,38 +114,38 @@ impl CassUuid {
     /// otherwise, it's generated from node unique information. For version 4
     /// both the clock sequence and the node parts are randomly generated.
     pub fn clock_seq_and_node(&self) -> u64 {
-        self.as_raw().clock_seq_and_node
+        self.inner().clock_seq_and_node
     }
 
     /// Returns timestamp for a V1 UUID.
     ///
     /// Returns `None` if the UUID is not a V1 UUID.
     pub fn timestamp(&self) -> Option<u64> {
-        if self.version() == CassUuidVersion::V1 {
-            let timestamp = unsafe { cass_uuid_timestamp(self.as_raw()) };
+        if self.version() == CqlUuidVersion::V1 {
+            let timestamp = unsafe { cass_uuid_timestamp(self.inner()) };
 
-            Some(timestamp)
+            Some(timesamp)
         } else {
             None
         }
     }
 
     /// Return the version of this UUID.
-    pub fn version(&self) -> CassUuidVersion {
-        match unsafe { cass_uuid_version(self.as_raw()) } {
-            1 => CassUuidVersion::V1,
-            4 => CassUuidVersion::V4,
-            v => CassUuidVersion::Other(v),
+    pub fn version(&self) -> CqlUuidVersion {
+        match unsafe { cass_uuid_version(self.inner()) } {
+            1 => CqlUuidVersion::V1,
+            4 => CqlUuidVersion::V4,
+            v => CqlUuidVersion::Other(v),
         }
     }
 }
 
-impl Display for CassUuid {
+impl Display for CqlUuid {
     /// Formats the UUID as a string.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut output = [0u8; 37];
         unsafe {
-            cass_uuid_string(self.as_raw(), output.as_mut_ptr() as *mut _);
+            cass_uuid_string(self.inner(), output.as_mut_ptr() as *mut _);
         }
 
         let uuid_str = CStr::from_bytes_with_nul(&output)
@@ -148,7 +157,7 @@ impl Display for CassUuid {
     }
 }
 
-impl PartialEq for CassUuid {
+impl PartialEq for CqlUuid {
     /// Compares two UUIDs for equality.
     fn eq(&self, other: &Self) -> bool {
         self.time_and_version() == other.time_and_version()
@@ -156,9 +165,9 @@ impl PartialEq for CassUuid {
     }
 }
 
-impl Eq for CassUuid {}
+impl Eq for CqlUuid {}
 
-impl Ord for CassUuid {
+impl Ord for CqlUuid {
     /// Compares two UUIDs.
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.time_and_version()
@@ -169,35 +178,32 @@ impl Ord for CassUuid {
     }
 }
 
-impl PartialOrd for CassUuid {
+impl PartialOrd for CqlUuid {
     /// Compares two UUIDs.
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl FromStr for CassUuid {
-    type Err = ();
+impl FromStr for CqlUuid {
+    type Err = DriverError;
 
     /// Parses a UUID from a string.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut uuid: struct_CassUuid_ = unsafe { std::mem::zeroed() };
-        let cstr = std::ffi::CString::new(s).map_err(|_| ())?;
+        let cstr = std::ffi::CString::new(s).map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
         let str_length = cstr.as_bytes().len();
-        let code: CassError = unsafe {
+        let code = unsafe {
             cass_uuid_from_string_n(cstr.as_ptr(), str_length, &mut uuid)
-        }
-        .into();
+        };
 
-        if code.is_ok() {
-            Ok(Self(uuid))
-        } else {
-            Err(())
-        }
+        to_result::<()>(code).map(|_| Self(uuid))
     }
 }
 
-impl From<struct_CassUuid_> for CassUuid {
+impl From<struct_CassUuid_> for CqlUuid {
     /// Converts a driver UUID to a Rust UUID.
     fn from(value: struct_CassUuid_) -> Self {
         Self(value)
@@ -205,7 +211,7 @@ impl From<struct_CassUuid_> for CassUuid {
 }
 
 #[cfg(feature = "uuid")]
-impl From<uuid::Uuid> for CassUuid {
+impl From<uuid::Uuid> for CqlUuid {
     fn from(value: uuid::Uuid) -> Self {
         let input = value.as_bytes();
 
@@ -236,10 +242,10 @@ impl From<uuid::Uuid> for CassUuid {
 }
 
 #[cfg(feature = "uuid")]
-impl From<CassUuid> for uuid::Uuid {
-    fn from(value: CassUuid) -> Self {
+impl From<CqlUuid> for uuid::Uuid {
+    fn from(value: CqlUuid) -> Self {
         let mut output = [0u8; 16];
-        let value = value.as_raw();
+        let value = value.inner();
 
         output[3] = value.time_and_version as u8;
         output[2] = (value.time_and_version >> 8) as u8;
