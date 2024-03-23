@@ -1,6 +1,7 @@
 use std::ffi::c_char;
 use std::num::NonZeroI64;
 
+use crate::cql::CqlUuid;
 use crate::ffi::{
     cass_cluster_free,
     cass_cluster_new,
@@ -54,12 +55,17 @@ use crate::ffi::{
     cass_cluster_set_use_schema,
     cass_cluster_set_whitelist_dc_filtering_n,
     cass_cluster_set_whitelist_filtering_n,
+    enum_cass_bool_t_cass_false as CASS_FALSE,
+    enum_cass_bool_t_cass_true as CASS_TRUE,
     struct_CassCluster_,
 };
 use crate::{
+    to_result,
     Consistency,
     DriverError,
+    DriverErrorKind,
     ProtocolVersion,
+    RetryPolicy,
     Ssl,
     TimestampGen,
 };
@@ -107,8 +113,11 @@ impl Cluster {
         let contact_points = contact_points.as_ref();
         let len = contact_points.len();
         let ptr = contact_points.as_ptr() as *const c_char;
-        unsafe { cass_cluster_set_contact_points_n(self.inner(), ptr, len) }
-            .into()
+        let code = unsafe {
+            cass_cluster_set_contact_points_n(self.inner(), ptr, len)
+        };
+
+        to_result(code)
     }
 
     /// Sets the port.
@@ -116,14 +125,16 @@ impl Cluster {
     /// The default value is 9042.
     pub fn set_port(&mut self, port: u16) -> Result<(), DriverError> {
         let port = port as i32;
-        unsafe { cass_cluster_set_port(self.inner(), port) }.into()
+        let code = unsafe { cass_cluster_set_port(self.inner(), port) };
+
+        to_result(code)
     }
 
     /// Sets the SSL context and enables SSL.
     pub fn set_ssl(&mut self, ssl: &Ssl) -> Result<(), DriverError> {
         unsafe { cass_cluster_set_ssl(self.inner(), ssl.inner()) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the Apache Cassandra protocol version.
@@ -136,9 +147,15 @@ impl Cluster {
         &mut self,
         version: ProtocolVersion,
     ) -> Result<(), DriverError> {
-        let version = cass_try_into!(u32::from(version));
-        unsafe { cass_cluster_set_protocol_version(self.inner(), version) }
-            .into()
+        let version = version.to_driver();
+        let version = version.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code =
+            unsafe { cass_cluster_set_protocol_version(self.inner(), version) };
+
+        to_result(code)
     }
 
     /// Sets the default consistency level of a statement.
@@ -146,12 +163,13 @@ impl Cluster {
     /// The default value is [`CassConsistency::LocalOne`].
     pub fn set_consistency(
         &mut self,
-        consistency: CassConsistency,
+        consistency: Consistency,
     ) -> Result<(), DriverError> {
-        unsafe {
-            cass_cluster_set_consistency(self.inner(), consistency.into())
-        }
-        .into()
+        let code = unsafe {
+            cass_cluster_set_consistency(self.inner(), consistency.to_driver())
+        };
+
+        to_result(code)
     }
 
     /// Sets the default serial consistency level of a statement.
@@ -161,13 +179,14 @@ impl Cluster {
         &mut self,
         consistency: Consistency,
     ) -> Result<(), DriverError> {
-        unsafe {
+        let code = unsafe {
             cass_cluster_set_serial_consistency(
                 self.inner(),
                 consistency.to_driver(),
             )
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Sets the number of I/O threads.
@@ -179,9 +198,15 @@ impl Cluster {
         &mut self,
         num_threads: usize,
     ) -> Result<(), DriverError> {
-        let num_threads = cass_try_into!(num_threads);
-        unsafe { cass_cluster_set_num_threads_io(self.inner(), num_threads) }
-            .into()
+        let num_threads = num_threads.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code = unsafe {
+            cass_cluster_set_num_threads_io(self.inner(), num_threads)
+        };
+
+        to_result(code)
     }
 
     /// Sets the size of the fixed size queue that stores pending requests.
@@ -191,9 +216,14 @@ impl Cluster {
         &mut self,
         queue_size: usize,
     ) -> Result<(), DriverError> {
-        let queue_size = cass_try_into!(queue_size);
-        unsafe { cass_cluster_set_queue_size_io(self.inner(), queue_size) }
-            .into()
+        let queue_size = queue_size.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code =
+            unsafe { cass_cluster_set_queue_size_io(self.inner(), queue_size) };
+
+        to_result(code)
     }
 
     /// Sets the size of the fixed size queue that stores events.
@@ -203,9 +233,15 @@ impl Cluster {
         &mut self,
         queue_size: usize,
     ) -> Result<(), DriverError> {
-        let queue_size = cass_try_into!(queue_size);
-        unsafe { cass_cluster_set_queue_size_event(self.inner(), queue_size) }
-            .into()
+        let queue_size = queue_size.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code = unsafe {
+            cass_cluster_set_queue_size_event(self.inner(), queue_size)
+        };
+
+        to_result(code)
     }
 
     /// Sets the number of connections made to each server in each IO thread.
@@ -215,14 +251,18 @@ impl Cluster {
         &mut self,
         num_connections: usize,
     ) -> Result<(), DriverError> {
-        let num_connections = cass_try_into!(num_connections);
-        unsafe {
+        let num_connections = num_connections.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code = unsafe {
             cass_cluster_set_core_connections_per_host(
                 self.inner(),
                 num_connections,
             )
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Sets the maximum number of connections made to each server in each IO
@@ -233,14 +273,18 @@ impl Cluster {
         &mut self,
         num_connections: usize,
     ) -> Result<(), DriverError> {
-        let num_connections = cass_try_into!(num_connections);
-        unsafe {
+        let num_connections = num_connections.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code = unsafe {
             cass_cluster_set_max_connections_per_host(
                 self.inner(),
                 num_connections,
             )
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Sets the wait time in milliseconds before attempting to reconnect.
@@ -250,12 +294,15 @@ impl Cluster {
         &mut self,
         wait_time: i64,
     ) -> Result<(), DriverError> {
-        let wait_time = cass_try_into!(wait_time);
+        let wait_time = wait_time.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe {
             cass_cluster_set_reconnect_wait_time(self.inner(), wait_time)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the maximum number of connections that will be created
@@ -269,14 +316,18 @@ impl Cluster {
         &mut self,
         num_connections: usize,
     ) -> Result<(), DriverError> {
-        let num_connections = cass_try_into!(num_connections);
-        unsafe {
+        let num_connections = num_connections.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code = unsafe {
             cass_cluster_set_max_concurrent_creation(
                 self.inner(),
                 num_connections,
             )
-            .into()
-        }
+        };
+
+        to_result(code)
     }
 
     /// Sets the timeout in milliseconds for connecting to a node.
@@ -286,10 +337,13 @@ impl Cluster {
         &mut self,
         timeout: i64,
     ) -> Result<(), DriverError> {
-        let timeout = cass_try_into!(timeout);
+        let timeout = timeout.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe { cass_cluster_set_connect_timeout(self.inner(), timeout) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the timeout in milliseconds for waiting for a response from a node.
@@ -299,10 +353,13 @@ impl Cluster {
         &mut self,
         timeout: i64,
     ) -> Result<(), DriverError> {
-        let timeout = cass_try_into!(timeout);
+        let timeout = timeout.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe { cass_cluster_set_request_timeout(self.inner(), timeout) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the timeout in milliseconds for waiting for DNS name resolution.
@@ -310,10 +367,13 @@ impl Cluster {
         &mut self,
         timeout: i64,
     ) -> Result<(), DriverError> {
-        let timeout = cass_try_into!(timeout);
+        let timeout = timeout.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe { cass_cluster_set_resolve_timeout(self.inner(), timeout) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the maximum time in milliseconds to wait for schema agreement after
@@ -325,15 +385,15 @@ impl Cluster {
         &mut self,
         wait_time: i64,
     ) -> Result<(), DriverError> {
-        if let Ok(wait_time) = wait_time.try_into() {
-            unsafe {
-                cass_cluster_set_max_schema_wait_time(self.inner(), wait_time)
-            };
+        let wait_time = wait_time.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
 
-            CassError::Ok
-        } else {
-            CassError::LibBadParams
-        }
+        unsafe {
+            cass_cluster_set_max_schema_wait_time(self.inner(), wait_time)
+        };
+
+        Ok(())
     }
 
     /// Sets the maximum time in milliseconds to wait for tracing data to become
@@ -344,15 +404,15 @@ impl Cluster {
         &mut self,
         wait_time: i64,
     ) -> Result<(), DriverError> {
-        if let Ok(wait_time) = wait_time.try_into() {
-            unsafe {
-                cass_cluster_set_tracing_max_wait_time(self.inner(), wait_time)
-            };
+        let wait_time = wait_time.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
 
-            CassError::Ok
-        } else {
-            CassError::LibBadParams
-        }
+        unsafe {
+            cass_cluster_set_tracing_max_wait_time(self.inner(), wait_time)
+        };
+
+        Ok(())
     }
 
     /// Sets the amount of time to wait between attempts to check to see if
@@ -363,18 +423,15 @@ impl Cluster {
         &mut self,
         wait_time: i64,
     ) -> Result<(), DriverError> {
-        if let Ok(wait_time) = wait_time.try_into() {
-            unsafe {
-                cass_cluster_set_tracing_retry_wait_time(
-                    self.inner(),
-                    wait_time,
-                )
-            };
+        let wait_time = wait_time.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
 
-            CassError::Ok
-        } else {
-            CassError::LibBadParams
-        }
+        unsafe {
+            cass_cluster_set_tracing_retry_wait_time(self.inner(), wait_time)
+        };
+
+        Ok(())
     }
 
     /// Sets the consistency level to use for checking to see if tracing data is
@@ -388,11 +445,11 @@ impl Cluster {
         unsafe {
             cass_cluster_set_tracing_consistency(
                 self.inner(),
-                consistency.into(),
+                consistency.to_driver(),
             )
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets credentials for plain text authentication.
@@ -423,7 +480,7 @@ impl Cluster {
             )
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Configures the cluster to use round-robin load balancing.
@@ -433,7 +490,7 @@ impl Cluster {
     pub fn set_load_balance_round_robin(&mut self) -> Result<(), DriverError> {
         unsafe { cass_cluster_set_load_balance_round_robin(self.inner()) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Configures the cluster to use DC-aware load balancing.
@@ -469,22 +526,22 @@ impl Cluster {
         let local_dc_len = local_dc.len();
         let local_dc_ptr = local_dc.as_ptr() as *const c_char;
 
-        if let Ok(used_hosts_per_remote_dc) =
-            used_hosts_per_remote_dc.try_into()
-        {
-            unsafe {
-                cass_cluster_set_load_balance_dc_aware_n(
-                    self.inner(),
-                    local_dc_ptr,
-                    local_dc_len,
-                    used_hosts_per_remote_dc,
-                    allow_remote_dcs_for_local_cl.into(),
-                )
-            }
-            .into()
-        } else {
-            CassError::LibBadParams
-        }
+        let used_hosts_per_remote_dc =
+            used_hosts_per_remote_dc.try_into().map_err(|_| {
+                DriverError::with_kind(DriverErrorKind::LibBadParams)
+            })?;
+
+        let code = unsafe {
+            cass_cluster_set_load_balance_dc_aware_n(
+                self.inner(),
+                local_dc_ptr,
+                local_dc_len,
+                used_hosts_per_remote_dc,
+                allow_remote_dcs_for_local_cl.into(),
+            )
+        };
+
+        to_result(code)
     }
 
     /// Configures the cluster to use token-aware request routing.
@@ -504,11 +561,10 @@ impl Cluster {
         &mut self,
         enabled: bool,
     ) -> Result<(), DriverError> {
-        unsafe {
-            cass_cluster_set_token_aware_routing(self.inner(), enabled.into())
-        };
+        let enabled = if enabled { CASS_TRUE } else { CASS_FALSE };
+        unsafe { cass_cluster_set_token_aware_routing(self.inner(), enabled) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Configures token-aware routing to randomly shuffle replicas.
@@ -523,14 +579,15 @@ impl Cluster {
         &mut self,
         enabled: bool,
     ) -> Result<(), DriverError> {
+        let enabled = if enabled { CASS_TRUE } else { CASS_FALSE };
         unsafe {
             cass_cluster_set_token_aware_routing_shuffle_replicas(
                 self.inner(),
-                enabled.into(),
+                enabled,
             )
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Configures the cluster to use latency-aware routing.
@@ -544,11 +601,12 @@ impl Cluster {
         &mut self,
         enabled: bool,
     ) -> Result<(), DriverError> {
+        let enabled = if enabled { CASS_TRUE } else { CASS_FALSE };
         unsafe {
-            cass_cluster_set_latency_aware_routing(self.inner(), enabled.into())
+            cass_cluster_set_latency_aware_routing(self.inner(), enabled)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Configures the cluster settings for latency-aware request routing.
@@ -582,10 +640,21 @@ impl Cluster {
         update_rate: i64,
         min_measured: usize,
     ) -> Result<(), DriverError> {
-        let scale = cass_try_into!(scale);
-        let retry_period = cass_try_into!(retry_period);
-        let update_rate = cass_try_into!(update_rate);
-        let min_measured = cass_try_into!(min_measured);
+        let scale = scale.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let retry_period = retry_period.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let update_rate = update_rate.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let min_measured = min_measured.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
 
         unsafe {
             cass_cluster_set_latency_aware_routing_settings(
@@ -598,7 +667,7 @@ impl Cluster {
             )
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets/Appends whitelist hosts.
@@ -626,7 +695,7 @@ impl Cluster {
             cass_cluster_set_whitelist_filtering_n(self.inner(), ptr, len)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets/Appends blacklist hosts.
@@ -654,7 +723,7 @@ impl Cluster {
             cass_cluster_set_blacklist_filtering_n(self.inner(), ptr, len)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Same as
@@ -674,7 +743,7 @@ impl Cluster {
             cass_cluster_set_whitelist_dc_filtering_n(self.inner(), ptr, len)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Same as
@@ -694,7 +763,7 @@ impl Cluster {
             cass_cluster_set_blacklist_dc_filtering_n(self.inner(), ptr, len)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Enables/Disables Nagle's algorithm on connections.
@@ -703,7 +772,7 @@ impl Cluster {
     pub fn set_tcp_nodelay(&mut self, enable: bool) -> Result<(), DriverError> {
         unsafe { cass_cluster_set_tcp_nodelay(self.inner(), enable.into()) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Enables/Disables TCP keep-alive on connections.
@@ -718,12 +787,15 @@ impl Cluster {
         delay: Option<i64>,
     ) -> Result<(), DriverError> {
         let enable = delay.is_some();
-        let delay = cass_try_into!(delay.unwrap_or(0));
+        let delay = delay.unwrap_or(0).try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe {
             cass_cluster_set_tcp_keepalive(self.inner(), enable.into(), delay)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the amount of time in seconds between heartbeat messages and
@@ -738,7 +810,10 @@ impl Cluster {
         &mut self,
         interval: i64,
     ) -> Result<(), DriverError> {
-        let interval = cass_try_into!(interval);
+        let interval = interval.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe {
             cass_cluster_set_connection_heartbeat_interval(
                 self.inner(),
@@ -746,7 +821,7 @@ impl Cluster {
             )
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the amount of time in seconds a connection is allowed to be without
@@ -758,12 +833,15 @@ impl Cluster {
         &mut self,
         timeout: i64,
     ) -> Result<(), DriverError> {
-        let timeout = cass_try_into!(timeout);
+        let timeout = timeout.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe {
             cass_cluster_set_connection_idle_timeout(self.inner(), timeout)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the retry policy used for all requests unless overridden by setting
@@ -776,11 +854,11 @@ impl Cluster {
     /// In all other cases the default policy will return an error.
     pub fn set_retry_policy(
         &mut self,
-        policy: &CassRetryPolicy,
+        policy: &RetryPolicy,
     ) -> Result<(), DriverError> {
         unsafe { cass_cluster_set_retry_policy(self.inner(), policy.inner()) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Enables/Disables retrieving and updating schema metadata.
@@ -792,9 +870,10 @@ impl Cluster {
     ///
     /// The default value is `true` (enabled).
     pub fn set_use_schema(&mut self, enabled: bool) -> Result<(), DriverError> {
-        unsafe { cass_cluster_set_use_schema(self.inner(), enabled.into()) };
+        let enabled = if enabled { CASS_TRUE } else { CASS_FALSE };
+        unsafe { cass_cluster_set_use_schema(self.inner(), enabled) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Enables/Disables the randomization of the contact points list.
@@ -808,13 +887,15 @@ impl Cluster {
         &mut self,
         enabled: bool,
     ) -> Result<(), DriverError> {
-        unsafe {
+        let enabled = if enabled { CASS_TRUE } else { CASS_FALSE };
+        let code = unsafe {
             cass_cluster_set_use_randomized_contact_points(
                 self.inner(),
-                enabled.into(),
+                enabled,
             )
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Enables constant speculative executions with the supplied settings.
@@ -828,15 +909,19 @@ impl Cluster {
         max_speculative_executions: usize,
     ) -> Result<(), DriverError> {
         let max_speculative_executions =
-            cass_try_into!(max_speculative_executions);
-        unsafe {
+            max_speculative_executions.try_into().map_err(|_| {
+                DriverError::with_kind(DriverErrorKind::LibBadParams)
+            })?;
+
+        let code = unsafe {
             cass_cluster_set_constant_speculative_execution_policy(
                 self.inner(),
                 delay,
                 max_speculative_executions,
             )
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Disables speculative executions.
@@ -845,10 +930,11 @@ impl Cluster {
     pub fn set_no_speculative_execution_policy(
         &mut self,
     ) -> Result<(), DriverError> {
-        unsafe {
+        let code = unsafe {
             cass_cluster_set_no_speculative_execution_policy(self.inner())
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Sets the maximum number of "pending write" objects that will be saved
@@ -865,11 +951,15 @@ impl Cluster {
         &mut self,
         num: usize,
     ) -> Result<(), DriverError> {
-        let num = cass_try_into!(num);
-        unsafe {
+        let num = num.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
+        let code = unsafe {
             cass_cluster_set_max_reusable_write_objects(self.inner(), num)
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Enables/Disables preparation of statements on all available hosts.
@@ -879,10 +969,12 @@ impl Cluster {
         &mut self,
         enabled: bool,
     ) -> Result<(), DriverError> {
-        unsafe {
-            cass_cluster_set_prepare_on_all_hosts(self.inner(), enabled.into())
-        }
-        .into()
+        let enabled = if enabled { CASS_TRUE } else { CASS_FALSE };
+        let code = unsafe {
+            cass_cluster_set_prepare_on_all_hosts(self.inner(), enabled)
+        };
+
+        to_result(code)
     }
 
     /// Enables/Disables pre-preparing cached prepared statements when existing
@@ -899,13 +991,12 @@ impl Cluster {
         &mut self,
         enabled: bool,
     ) -> Result<(), DriverError> {
-        unsafe {
-            cass_cluster_set_prepare_on_up_or_add_host(
-                self.inner(),
-                enabled.into(),
-            )
-        }
-        .into()
+        let enabled = if enabled { CASS_TRUE } else { CASS_FALSE };
+        let code = unsafe {
+            cass_cluster_set_prepare_on_up_or_add_host(self.inner(), enabled)
+        };
+
+        to_result(code)
     }
 
     /// Enables/Disables the `NO_COMPACT` startup option.
@@ -916,8 +1007,11 @@ impl Cluster {
     ///
     /// The default value is `false`.
     pub fn set_no_compact(&mut self, enabled: bool) -> Result<(), DriverError> {
-        unsafe { cass_cluster_set_no_compact(self.inner(), enabled.into()) }
-            .into()
+        let code = unsafe {
+            cass_cluster_set_no_compact(self.inner(), enabled.into())
+        };
+
+        to_result(code)
     }
 
     /// Sets the application name.
@@ -937,7 +1031,7 @@ impl Cluster {
         let ptr = name.as_ptr() as *const c_char;
         unsafe { cass_cluster_set_application_name_n(self.inner(), ptr, len) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the application version.
@@ -960,7 +1054,7 @@ impl Cluster {
             cass_cluster_set_application_version_n(self.inner(), ptr, len)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the client identifier.
@@ -970,10 +1064,10 @@ impl Cluster {
     /// there are a lot of client (or application) connections.
     ///
     /// Default value is a random UUID v4.
-    pub fn set_client_id(&mut self, id: CassUuid) -> Result<(), DriverError> {
+    pub fn set_client_id(&mut self, id: CqlUuid) -> Result<(), DriverError> {
         unsafe { cass_cluster_set_client_id(self.inner(), id.inner()) };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the amount of time in seconds between monitor reporting event
@@ -986,12 +1080,15 @@ impl Cluster {
         &mut self,
         interval: i64,
     ) -> Result<(), DriverError> {
-        let interval = cass_try_into!(interval);
+        let interval = interval.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         unsafe {
             cass_cluster_set_monitor_reporting_interval(self.inner(), interval)
         };
 
-        CassError::Ok
+        Ok(())
     }
 
     /// Sets the amount of time in milliseconds after which metric histograms
@@ -1008,12 +1105,15 @@ impl Cluster {
         &mut self,
         interval: NonZeroI64,
     ) -> Result<(), DriverError> {
-        let interval = cass_try_into!(interval.get());
+        let interval = interval.get().try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
 
-        unsafe {
+        let code = unsafe {
             cass_cluster_set_histogram_refresh_interval(self.inner(), interval)
-        }
-        .into()
+        };
+
+        to_result(code)
     }
 
     /// Sets the timestamp generator used to assign timestamps to all requests
@@ -1027,7 +1127,7 @@ impl Cluster {
     ) -> Result<(), DriverError> {
         unsafe { cass_cluster_set_timestamp_gen(self.inner(), gen.inner()) };
 
-        CassError::Ok
+        Ok(())
     }
 }
 

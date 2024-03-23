@@ -313,8 +313,20 @@ pub(crate) fn to_result<T>(code: enum_CassError_) -> Result<T, DriverError>
 where
     T: Default,
 {
+    to_result_with_message(code, code.to_string())
+}
+
+/// Converts a driver error code to a `Result` with the given error message.
+pub(crate) fn to_result_with_message<T, M>(
+    code: enum_CassError_,
+    message: M,
+) -> Result<T, DriverError>
+where
+    T: Default,
+    M: Into<String>,
+{
     DriverErrorKind::from_driver(code)
-        .map(|kind| Err(DriverError::with_kind(kind)))
+        .map(|kind| Err(DriverError::with_message(kind, message)))
         .unwrap_or_else(|| Ok(T::default()))
 }
 

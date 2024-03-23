@@ -30,7 +30,7 @@ pub enum ProtocolVersion {
     /// Only supported when using the DSE driver with DataStax Enterprise.
     Dsev2,
     /// The protocol version is unknown to this crate.
-    Unknown(u32),
+    Other(u32),
 }
 
 impl ProtocolVersion {
@@ -48,7 +48,25 @@ impl ProtocolVersion {
             VERSION_V5      => V5,
             VERSION_DSEV1   => Dsev1,
             VERSION_DSEV2   => Dsev2,
-            unknown         => Unknown(unknown),
+            unknown         => Other(unknown),
+        }
+    }
+
+    /// Converts the `ProtocolVersion` to the driver's enum type.
+    #[rustfmt::skip]
+    pub(crate) fn to_driver(self) -> enum_CassProtocolVersion_ {
+        use ProtocolVersion::*;
+
+        #[allow(deprecated)]
+        match self {
+            V1             => VERSION_V1,
+            V2             => VERSION_V2,
+            V3             => VERSION_V3,
+            V4             => VERSION_V4,
+            V5             => VERSION_V5,
+            Dsev1          => VERSION_DSEV1,
+            Dsev2          => VERSION_DSEV2,
+            Other(unknown) => unknown,
         }
     }
 }

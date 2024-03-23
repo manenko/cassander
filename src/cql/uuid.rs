@@ -124,7 +124,7 @@ impl CqlUuid {
         if self.version() == CqlUuidVersion::V1 {
             let timestamp = unsafe { cass_uuid_timestamp(self.inner()) };
 
-            Some(timesamp)
+            Some(timestamp)
         } else {
             None
         }

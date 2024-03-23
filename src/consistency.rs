@@ -1,3 +1,8 @@
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 #[rustfmt::skip]
 use crate::ffi::{
     enum_CassConsistency_,
@@ -92,5 +97,28 @@ impl Consistency {
             LocalOne     => LOCAL_ONE,
             LocalSerial  => LOCAL_SERIAL,
         }
+    }
+}
+
+impl Display for Consistency {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        use Consistency::*;
+
+        #[rustfmt::skip]
+        let consistency = match self {
+            One         => "ONE",
+            Two         => "TWO",
+            Three       => "THREE",
+            Quorum      => "QUORUM",
+            All         => "ALL",
+            EachQuorum  => "EACH_QUORUM",
+            LocalQuorum => "LOCAL_QUORUM",
+            LocalOne    => "LOCAL_ONE",
+            LocalSerial => "LOCAL_SERIAL",
+            Serial      => "SERIAL",
+            Any         => "ANY",
+        };
+
+        write!(f, "{}", consistency)
     }
 }
