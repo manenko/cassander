@@ -268,6 +268,26 @@ impl<R> DriverFuture<R> {
 
         to_result::<()>(code).map(|_| CqlUuid::from_driver(id))
     }
+
+    /// Gets the error from the future if the future failed.
+    ///
+    /// If the future is not ready this method will block the current thread and
+    /// wait for the future to be set.
+    ///
+    /// Returns [`None`] if the future has been completed successfully.
+    fn get_error(&self) -> Option<DriverError> {
+        match self.get_error_kind() {
+            Some(kind) => {
+                let message = self
+                    .get_error_message()
+                    .unwrap_or_else(|| kind.to_string());
+                let details = self.get_error_details();
+
+                Some(DriverError::new(kind, message, details))
+            }
+            None => None,
+        }
+    }
 }
 
 impl<R> Drop for DriverFuture<R> {
@@ -317,8 +337,16 @@ where
                     return Poll::Pending;
                 }
                 DriverFutureState::Set => {
-                    // The future is ready, extract the result.
-                    let result = R::get_driver_future_result(&self)?;
+                    // The future is ready, check if it has an error.
+                    if let Some(error) = self.get_error() {
+                        return Poll::Ready(Err(error));
+                    }
+
+                    // There is no error, get the result.
+                    let result = R::get_driver_future_result(
+                        self.session.clone(),
+                        &self,
+                    )?;
 
                     return Poll::Ready(Ok(result));
                 }
