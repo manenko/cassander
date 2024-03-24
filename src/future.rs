@@ -1,4 +1,17 @@
+use std::ffi::c_void;
 use std::slice;
+use std::sync::Arc;
+use std::task::{
+    Context,
+    Poll,
+    Waker,
+};
+
+use futures::Future;
+use parking_lot::{
+    Mutex,
+    MutexGuard,
+};
 
 use crate::cql::CqlUuid;
 use crate::ffi::{
@@ -7,6 +20,7 @@ use crate::ffi::{
     cass_future_free,
     cass_future_get_error_result,
     cass_future_ready,
+    cass_future_set_callback,
     cass_future_tracing_id,
     cass_future_wait,
     cass_future_wait_timed,
@@ -16,6 +30,7 @@ use crate::ffi::{
 };
 use crate::{
     to_result,
+    to_result_with_message,
     DriverError,
     DriverErrorDetails,
     DriverErrorKind,
@@ -111,6 +126,8 @@ pub struct DriverFuture {
     ///
     /// The future must not outlive the session.
     session: Session,
+    /// The future state which is also is the target of the future callback.
+    state:   Arc<DriverFutureCallbackTarget>,
 }
 
 impl DriverFuture {
@@ -120,9 +137,12 @@ impl DriverFuture {
             !inner.is_null(),
             "the driver's future object must not be null"
         );
+
+        let state = DriverFutureCallbackTarget::new_in_arc();
         Self {
             inner,
             session,
+            state,
         }
     }
 
@@ -251,3 +271,151 @@ impl Drop for DriverFuture {
 
 unsafe impl Send for DriverFuture {}
 unsafe impl Sync for DriverFuture {}
+
+impl Future for DriverFuture {
+    type Output = Result<(), DriverError>;
+
+    /// Polls the future to check if it is ready.
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<Self::Output> {
+        // We install callback only once when the future is created. The
+        // callback must be set ouside of the Rust lock to avoid deadlocks.
+        {
+            let mut current_state = self.state.state();
+            match *current_state {
+                DriverFutureState::Created => {
+                    *current_state = DriverFutureState::NotSet {
+                        waker:  cx.waker().clone(),
+                        target: self.state.clone(),
+                    };
+                    // The callback will be installed later in this function.
+                }
+                DriverFutureState::NotSet {
+                    ref mut waker, ..
+                } => {
+                    // We are already waiting for the future to be set, update
+                    // the waker if needed.
+                    if !waker.will_wake(cx.waker()) {
+                        *waker = cx.waker().clone();
+                    }
+
+                    return Poll::Pending;
+                }
+                DriverFutureState::Set => {
+                    // The future is ready.
+                    // TODO: Extract the result.
+                    return Poll::Ready(Ok(()));
+                }
+            };
+        }
+
+        // We are in the `Created` state and we need to set the callback.
+        let target = self.state.as_ref() as *const _ as *mut c_void;
+        let code = unsafe {
+            cass_future_set_callback(self.inner, Some(future_callback), target)
+        };
+
+        to_result_with_message(code, "failed to set future callback")?;
+
+        Poll::Pending
+    }
+}
+
+/// The state of a future.
+#[derive(Debug)]
+pub enum DriverFutureState {
+    /// The future has been created but the callbacke has not been set yet.
+    Created,
+    /// The future is not ready yet, the callback was installed. The background
+    /// work is in progress.
+    NotSet {
+        /// The waker to call when the future is set.
+        waker:  Waker,
+        /// The target of the future callback.
+        target: Arc<DriverFutureCallbackTarget>,
+    },
+    /// The future is ready, the callback was called.
+    Set,
+}
+
+/// The target of a future callback.
+///
+/// It is stored in the:
+///
+/// - [`DriverFuture`] instance wrapped in an [`Arc`],
+/// - [`DriverFutureState`] instance wrapped in an [`Arc`] as well.
+///
+/// We store the target in two places to create a reference cycle. Why would we
+/// want to create a reference cycle? Because we want to ensure Rust does not
+/// drop the future automaton before the callback is called.
+///
+/// The future callback is called by the driver when the future is set. It
+/// changes the target future state to the [`DriverFutureState::Set`] and wakes
+/// up the task that is waiting for the future to be set. The callback is called
+/// with the driver future and the user data. The user data is the target of the
+/// callback.
+#[derive(Debug)]
+pub struct DriverFutureCallbackTarget {
+    /// The current state of the future automaton.
+    state: Mutex<DriverFutureState>,
+}
+
+impl DriverFutureCallbackTarget {
+    /// Creates a new callback target in the [`DriverFutureState::Created`].
+    pub fn new() -> Self {
+        Self {
+            state: Mutex::new(DriverFutureState::Created),
+        }
+    }
+
+    /// Same as [`DriverFutureCallbackTarget::new`] but wrapped in an [`Arc`].
+    pub fn new_in_arc() -> Arc<Self> {
+        Arc::new(Self::new())
+    }
+
+    /// Transitions to the given state of the future automaton returning the
+    /// previous state.
+    pub fn transition_to(&self, state: DriverFutureState) -> DriverFutureState {
+        let mut current_state = self.state();
+
+        std::mem::replace(&mut *current_state, state)
+    }
+
+    /// Acquires the state of the future automaton and blocks the thread until
+    /// the mutex is released.
+    pub fn state(&self) -> MutexGuard<'_, DriverFutureState> {
+        self.state.lock()
+    }
+}
+
+/// The callback function that is called when a future is set.
+///
+/// The callback updates the Rust future state to [`DriverFutureState::Set`] and
+/// wakes up the task that is waiting for the future to be set.
+unsafe extern "C" fn future_callback(
+    _future: *mut struct_CassFuture_,
+    data: *mut c_void,
+) {
+    let target = data as *mut DriverFutureCallbackTarget;
+    let target = unsafe { &mut *target };
+
+    let state = target.transition_to(DriverFutureState::Set);
+
+    match state {
+        DriverFutureState::NotSet {
+            ref waker, ..
+        } => {
+            waker.wake_by_ref();
+        }
+        _ => {
+            // This can never happen because this callback function is called
+            // only when it was set by the `poll` method of the `Future` trait.
+            unreachable!(
+                "the future callback was called before the callback was \
+                 installed from the Rust side"
+            );
+        }
+    }
+}
