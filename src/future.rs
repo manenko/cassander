@@ -1,4 +1,7 @@
+mod result;
+
 use std::ffi::c_void;
+use std::marker::PhantomData;
 use std::slice;
 use std::sync::Arc;
 use std::task::{
@@ -12,6 +15,7 @@ use parking_lot::{
     Mutex,
     MutexGuard,
 };
+pub(crate) use result::*;
 
 use crate::cql::CqlUuid;
 use crate::ffi::{
@@ -111,26 +115,31 @@ use crate::{
 //
 // The problem is that the `Future` trait can only return one type of result.
 // So we need the type returned by the `poll` method to be able to costruct
-// itself from the druver's future. Which means a custom trait. The method(-s)
+// itself from the driver's future. Which means a custom trait. The method(-s)
 // of this trait will be called from the `poll` method in case of a successful
 
 /// The future result of a DataStax C++ driver operation.
 ///
 /// It can represent a result if the operation completed successfully or an
 /// error if the operation failed.
+///
+/// The `R` type parameter represents the type of the successful completion of
+/// the future.
 #[must_use]
-pub struct DriverFuture {
+pub struct DriverFuture<R> {
     /// The driver's future object.
-    inner:   *mut struct_CassFuture_,
+    inner:        *mut struct_CassFuture_,
     /// The session that created the future.
     ///
     /// The future must not outlive the session.
-    session: Session,
+    session:      Session,
     /// The future state which is also is the target of the future callback.
-    state:   Arc<DriverFutureCallbackTarget>,
+    state:        Arc<DriverFutureCallbackTarget>,
+    /// The type of the successful completion of the future.
+    _result_type: PhantomData<R>,
 }
 
-impl DriverFuture {
+impl<R> DriverFuture<R> {
     /// Creates a new future object.
     pub fn new(inner: *mut struct_CassFuture_, session: Session) -> Self {
         assert!(
@@ -143,6 +152,7 @@ impl DriverFuture {
             inner,
             session,
             state,
+            _result_type: PhantomData,
         }
     }
 
@@ -260,7 +270,7 @@ impl DriverFuture {
     }
 }
 
-impl Drop for DriverFuture {
+impl<R> Drop for DriverFuture<R> {
     /// Frees the future instance.
     ///
     /// A future can be freed anytime.
@@ -269,11 +279,14 @@ impl Drop for DriverFuture {
     }
 }
 
-unsafe impl Send for DriverFuture {}
-unsafe impl Sync for DriverFuture {}
+unsafe impl<R> Send for DriverFuture<R> {}
+unsafe impl<R> Sync for DriverFuture<R> {}
 
-impl Future for DriverFuture {
-    type Output = Result<(), DriverError>;
+impl<R> Future for DriverFuture<R>
+where
+    R: DriverFutureResult,
+{
+    type Output = Result<R, DriverError>;
 
     /// Polls the future to check if it is ready.
     fn poll(
@@ -304,9 +317,10 @@ impl Future for DriverFuture {
                     return Poll::Pending;
                 }
                 DriverFutureState::Set => {
-                    // The future is ready.
-                    // TODO: Extract the result.
-                    return Poll::Ready(Ok(()));
+                    // The future is ready, extract the result.
+                    let result = R::get_driver_future_result(&self)?;
+
+                    return Poll::Ready(Ok(result));
                 }
             };
         }
@@ -325,7 +339,7 @@ impl Future for DriverFuture {
 
 /// The state of a future.
 #[derive(Debug)]
-pub enum DriverFutureState {
+enum DriverFutureState {
     /// The future has been created but the callbacke has not been set yet.
     Created,
     /// The future is not ready yet, the callback was installed. The background
@@ -357,7 +371,7 @@ pub enum DriverFutureState {
 /// with the driver future and the user data. The user data is the target of the
 /// callback.
 #[derive(Debug)]
-pub struct DriverFutureCallbackTarget {
+struct DriverFutureCallbackTarget {
     /// The current state of the future automaton.
     state: Mutex<DriverFutureState>,
 }
