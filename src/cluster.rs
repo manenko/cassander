@@ -56,7 +56,6 @@ use crate::ffi::{
     cass_cluster_set_whitelist_dc_filtering_n,
     cass_cluster_set_whitelist_filtering_n,
     cass_session_connect,
-    cass_session_connect_keyspace,
     cass_session_connect_keyspace_n,
     enum_cass_bool_t_cass_false as CASS_FALSE,
     enum_cass_bool_t_cass_true as CASS_TRUE,
