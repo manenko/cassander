@@ -4,7 +4,6 @@
 //! driver for Apache Cassandra. The crate is a work in progress and is not
 //! feature complete. The crate is not yet ready for production use.
 
-mod allocator;
 mod cluster;
 mod consistency;
 mod error;
@@ -17,9 +16,10 @@ mod ssl_verify_flags;
 mod timestamp_gen;
 mod version;
 
+pub mod allocator;
 pub mod cql;
+pub mod logging;
 
-pub use allocator::*;
 pub use cluster::*;
 pub use consistency::*;
 pub use error::*;

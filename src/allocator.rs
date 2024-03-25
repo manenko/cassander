@@ -1,3 +1,11 @@
+//! Integration with Rust global memory allocator.
+//!
+//! This module provides [`use_rust_global_allocator`] function to setup the
+//! underlying DataStax C++ driver for Apache Cassandra to use Rust global
+//! memory allocator instead of its own memory management functions.
+//!
+//! The driver also uses this allocator for any third-party libraries that
+//! allows to set custom memory management functions.
 use std::alloc::{
     alloc,
     dealloc,
