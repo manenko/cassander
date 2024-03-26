@@ -17,7 +17,7 @@ pub struct Session(Arc<SessionWrapper>);
 
 impl Session {
     /// Creates a new Cassandra session.
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let session = unsafe { cass_session_new() };
 
         Self(Arc::new(SessionWrapper(session)))

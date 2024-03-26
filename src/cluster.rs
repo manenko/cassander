@@ -1135,7 +1135,7 @@ impl Cluster {
     }
 
     /// Connects to the cluster and returns a session.
-    pub async fn connect(&self) -> Result<Session, DriverError> {
+    pub async fn connect(self) -> Result<Session, DriverError> {
         let session = Session::new();
         let future =
             unsafe { cass_session_connect(session.inner(), self.inner()) };
