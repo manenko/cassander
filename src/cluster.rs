@@ -75,7 +75,6 @@ use crate::{
 };
 
 // TODO: `cass_cluster_set_authenticator_callbacks`
-// TODO: `cass_cluster_set_timestamp_gen`
 // TODO: `cass_cluster_set_execution_profile`
 // TODO: `cass_cluster_set_host_listener_callback`
 // TODO: `cass_cluster_set_cloud_secure_connection_bundle_n`

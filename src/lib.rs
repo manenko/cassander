@@ -5,6 +5,7 @@
 //! feature complete. The crate is not yet ready for production use.
 
 mod cluster;
+mod config;
 mod consistency;
 mod error;
 pub(crate) mod ffi;
@@ -21,6 +22,7 @@ pub mod cql;
 pub mod logging;
 
 pub use cluster::*;
+pub use config::*;
 pub use consistency::*;
 pub use error::*;
 pub use retry_policy::*;
