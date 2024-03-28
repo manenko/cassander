@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crate::{
     Consistency,
     ContactPoint,
@@ -132,6 +134,95 @@ impl DriverConfigBuilder {
     /// The default value is 2.
     pub fn max_connections_per_host(mut self, count: usize) -> Self {
         self.config.max_connections_per_host = Some(count);
+
+        self
+    }
+
+    /// Sets the wait time before attempting to reconnect.
+    ///
+    /// The default value is 2000 milliseconds.
+    pub fn reconnect_wait_time(mut self, duration: Duration) -> Self {
+        self.config.reconnect_wait_time = Some(duration);
+
+        self
+    }
+
+    /// Sets the maximum number of connections that will be created
+    /// concurrently.
+    ///
+    /// Connections are created when the current connections are unable to keep
+    /// up with request throughput.
+    ///
+    /// The default value is 1.
+    pub fn max_concurrent_creation(mut self, count: usize) -> Self {
+        self.config.max_concurrent_creation = Some(count);
+
+        self
+    }
+
+    /// Sets the timeout for establishing a connection to a Cassandra node.
+    ///
+    /// The default value is 5000 milliseconds.
+    pub fn connect_timeout(mut self, duration: Duration) -> Self {
+        self.config.connect_timeout = Some(duration);
+
+        self
+    }
+
+    /// Sets the timeout for waiting for a response from a Cassandra node.
+    ///
+    /// The default value is 12000 milliseconds.
+    pub fn request_timeout(mut self, duration: Duration) -> Self {
+        self.config.request_timeout = Some(duration);
+
+        self
+    }
+
+    /// Sets the timeout for waiting for DNS name resolution.
+    ///
+    /// The default value is 2000 milliseconds.
+    pub fn resolve_timeout(mut self, duration: Duration) -> Self {
+        self.config.resolve_timeout = Some(duration);
+
+        self
+    }
+
+    /// Sets the maximum time to wait for a schema agreement after a
+    /// schema-altering query (e.g. creating, altering, dropping a
+    /// table/keyspace/view/index etc).
+    ///
+    /// The default value is 10000 milliseconds.
+    pub fn max_schema_wait_time(mut self, duration: Duration) -> Self {
+        self.config.max_schema_wait_time = Some(duration);
+
+        self
+    }
+
+    /// Sets the maximum time to wait for tracing data to become available.
+    ///
+    /// The default value is 15 milliseconds.
+    pub fn tracing_max_wait_time(mut self, duration: Duration) -> Self {
+        self.config.tracing_max_wait_time = Some(duration);
+
+        self
+    }
+
+    /// Sets the amount of time to wait between attempts to check to see if
+    /// tracing is available.
+    ///
+    /// The default value is 3 milliseconds.
+    pub fn tracing_retry_wait_time(mut self, duration: Duration) -> Self {
+        self.config.tracing_retry_wait_time = Some(duration);
+
+        self
+    }
+
+    /// Sets the consistency level to use for checking to see if tracing data is
+    /// available.
+    ///
+    /// The default value is [`Consistency::LocalOne`].
+    pub fn tracing_consistency(mut self, consistency: Consistency) -> Self {
+        self.config.tracing_consistency = Some(consistency);
 
         self
     }

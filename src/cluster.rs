@@ -366,6 +366,8 @@ impl Cluster {
     }
 
     /// Sets the timeout in milliseconds for waiting for DNS name resolution.
+    ///
+    /// The default value is 2000ms.
     pub fn set_resolve_timeout(
         &mut self,
         timeout: i64,

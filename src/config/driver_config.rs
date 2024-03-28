@@ -87,6 +87,77 @@ pub struct DriverConfig {
         serde(with = "crate::serialization::opt_duration_as_string")
     )]
     pub reconnect_wait_time: Option<Duration>,
+
+    /// The maximum number of connections that will be created concurrently.
+    ///
+    /// Connections are created when the current connections are unable to keep
+    /// up with request throughput.
+    ///
+    /// If not set, the default value is 1.
+    pub max_concurrent_creation: Option<usize>,
+
+    /// The timeout for establishing a connection to a Cassandra node.
+    ///
+    /// If not set, the default value is 5000 milliseconds.
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    pub connect_timeout: Option<Duration>,
+
+    /// The timeout for waiting for a response from a Cassandra node.
+    ///
+    /// If not set, the default value is 12000 milliseconds.
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    pub request_timeout: Option<Duration>,
+
+    /// The timeout for waiting for DNS name resolution.
+    ///
+    /// If not set, the default value is 2000 milliseconds.
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    pub resolve_timeout: Option<Duration>,
+
+    /// The maximum time to wait for schema agreement after a schema-altering
+    /// query (e.g. creating, altering, dropping a table/keyspace/view/index
+    /// etc).
+    ///
+    /// If not set, the default value is 10000 milliseconds.
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    pub max_schema_wait_time: Option<Duration>,
+
+    /// The maximum time to wait for tracing data to become available.
+    ///
+    /// If not set, the default value is 15 milliseconds.
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    pub tracing_max_wait_time: Option<Duration>,
+
+    /// The amount of time to wait between attempts to check to see if tracing
+    /// is available.
+    ///
+    /// If not set, the default value is 3 milliseconds.
+    #[cfg_attr(
+        feature = "serde",
+        serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    pub tracing_retry_wait_time: Option<Duration>,
+
+    /// The consistency level to use for checking to see if tracing data is
+    /// available.
+    ///
+    /// If not set, the default value is [`Consistency::One`].
+    pub tracing_consistency: Option<Consistency>,
 }
 
 impl DriverConfig {
