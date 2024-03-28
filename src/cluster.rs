@@ -145,7 +145,7 @@ impl Cluster {
     /// This will automatically downgrade to the lowest supported protocol
     /// version.
     ///
-    /// The default value is [`CassProtocolVersion::V4`].
+    /// The default value is [`ProtocolVersion::V4`].
     pub fn set_protocol_version(
         &mut self,
         version: ProtocolVersion,
@@ -163,7 +163,7 @@ impl Cluster {
 
     /// Sets the default consistency level of a statement.
     ///
-    /// The default value is [`CassConsistency::LocalOne`].
+    /// The default value is [`Consistency::LocalOne`].
     pub fn set_consistency(
         &mut self,
         consistency: Consistency,
@@ -177,7 +177,7 @@ impl Cluster {
 
     /// Sets the default serial consistency level of a statement.
     ///
-    /// The default value is [`CassConsistency::Any`].
+    /// The default value is [`Consistency::Any`].
     pub fn set_serial_consistency(
         &mut self,
         consistency: Consistency,
@@ -440,7 +440,7 @@ impl Cluster {
     /// Sets the consistency level to use for checking to see if tracing data is
     /// available.
     ///
-    /// The default value is [`CassConsistency::One`].
+    /// The default value is [`Consistency::One`].
     pub fn set_tracing_consistency(
         &mut self,
         consistency: Consistency,
@@ -730,7 +730,7 @@ impl Cluster {
     }
 
     /// Same as
-    /// [`set_whitelist_filtering`](CassCluster::set_whitelist_filtering) but
+    /// [`set_whitelist_filtering`](Cluster::set_whitelist_filtering) but
     /// whitelists all hosts of a datacenter.
     pub fn set_whitelist_dc_filtering<T>(
         &mut self,
@@ -750,7 +750,7 @@ impl Cluster {
     }
 
     /// Same as
-    /// [`set_blacklist_filtering`](CassCluster::set_blacklist_filtering) but
+    /// [`set_blacklist_filtering`](Cluster::set_blacklist_filtering) but
     /// blacklists all hosts of a datacenter.
     pub fn set_blacklist_dc_filtering<T>(
         &mut self,
@@ -850,7 +850,7 @@ impl Cluster {
     /// Sets the retry policy used for all requests unless overridden by setting
     /// a retry policy on a statement or a batch.
     ///
-    /// The default policy is [`CassRetryPolicy::default`]. This policy will
+    /// The default policy is [`RetryPolicy::default`]. This policy will
     /// retry on a read timeout if there was enough replicas, but no data
     /// present, on a write timeout if a logged batch request failed to write
     /// the batch log, and on a unavailable error it retries using a new host.
@@ -867,7 +867,7 @@ impl Cluster {
     /// Enables/Disables retrieving and updating schema metadata.
     ///
     /// If disabled this is allows the driver to skip over retrieving and
-    /// updating schema metadata and [`CassSession::get_schema_meta`] will
+    /// updating schema metadata and [`Session::get_schema_meta`] will
     /// always return an empty object. This can be useful for reducing the
     /// startup overhead of short-lived sessions.
     ///

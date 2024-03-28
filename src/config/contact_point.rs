@@ -94,6 +94,16 @@ impl From<ContactPoint> for String {
     }
 }
 
+impl Default for ContactPoint {
+    /// Creates a new contact point with the default host and port.
+    fn default() -> Self {
+        Self {
+            host: Host::default(),
+            port: None,
+        }
+    }
+}
+
 fn parse_contact_point<S>(s: S) -> Result<ContactPoint, ContactPointParseError>
 where
     S: Into<String>,

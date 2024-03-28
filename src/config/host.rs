@@ -2,7 +2,10 @@ use std::fmt::{
     Display,
     Formatter,
 };
-use std::net::IpAddr;
+use std::net::{
+    IpAddr,
+    Ipv4Addr,
+};
 use std::str::FromStr;
 
 use thiserror::Error;
@@ -51,6 +54,13 @@ impl Display for Host {
             Host::Domain(domain) => write!(f, "{}", domain),
             Host::IpAddr(ip_addr) => write!(f, "{}", ip_addr),
         }
+    }
+}
+
+impl Default for Host {
+    /// Creates a new host with the default value.
+    fn default() -> Self {
+        Host::IpAddr(Ipv4Addr::LOCALHOST.into())
     }
 }
 

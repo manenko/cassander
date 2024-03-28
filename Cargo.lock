@@ -34,6 +34,7 @@ dependencies = [
  "bigdecimal",
  "chrono",
  "dashmap",
+ "duration-string",
  "futures",
  "itertools",
  "num-bigint",
@@ -70,6 +71,15 @@ dependencies = [
  "lock_api",
  "once_cell",
  "parking_lot_core",
+]
+
+[[package]]
+name = "duration-string"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fcc1d9ae294a15ed05aeae8e11ee5f2b3fe971c077d45a42fb20825fba6ee13"
+dependencies = [
+ "serde",
 ]
 
 [[package]]

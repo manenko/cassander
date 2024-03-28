@@ -22,6 +22,7 @@ use crate::ffi::{
 
 /// Consistency levels for Cassandra read and write operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Consistency {
     /// A single replica acknowledges the read or write operation.
     One,

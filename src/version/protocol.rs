@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 #[rustfmt::skip]
 use crate::ffi::{
     enum_CassProtocolVersion_,
@@ -12,6 +14,7 @@ use crate::ffi::{
 
 /// Apache Cassandra protocol version.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ProtocolVersion {
     /// Deprecated.
     #[deprecated(note = "This version is deprecated.")]
@@ -39,7 +42,6 @@ impl ProtocolVersion {
     pub(crate) fn from_driver(version: enum_CassProtocolVersion_) -> Self {
         use ProtocolVersion::*;
 
-        #[allow(deprecated)]
         match version {
             VERSION_V1      => V1,
             VERSION_V2      => V2,
@@ -57,7 +59,6 @@ impl ProtocolVersion {
     pub(crate) fn to_driver(self) -> enum_CassProtocolVersion_ {
         use ProtocolVersion::*;
 
-        #[allow(deprecated)]
         match self {
             V1             => VERSION_V1,
             V2             => VERSION_V2,
