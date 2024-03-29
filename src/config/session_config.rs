@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::authenticator::Authenticator;
 use crate::{
     Consistency,
     ContactPoint,
@@ -348,6 +349,8 @@ pub struct SessionConfig {
     ///
     /// Default value is a random UUID v4 string.
     pub client_id: Option<String>,
+
+    pub authenticator: Option<Authenticator>,
 }
 
 impl SessionConfig {

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use crate::authenticator::Authenticator;
 use crate::{
     Consistency,
     ContactPoint,
@@ -475,6 +476,15 @@ impl SessionConfigBuilder {
         S: Into<String>,
     {
         self.config.client_id = Some(id.into());
+
+        self
+    }
+
+    /// Sets the authenticator used to authenticate with the Cassandra cluster.
+    ///
+    /// The default authenticator is [`Authenticator::None`].
+    pub fn authenticator(mut self, authenticator: Authenticator) -> Self {
+        self.config.authenticator = Some(authenticator);
 
         self
     }

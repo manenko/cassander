@@ -18,6 +18,7 @@ mod timestamp_gen;
 mod version;
 
 pub mod allocator;
+pub mod authenticator;
 pub mod cql;
 pub mod logging;
 
