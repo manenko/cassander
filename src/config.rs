@@ -1,12 +1,12 @@
 mod contact_point;
-mod driver_config;
-mod driver_config_builder;
 mod host;
+mod session_config;
+mod session_config_builder;
 
 #[cfg(feature = "serde")]
 pub(crate) mod serialization;
 
 pub use contact_point::*;
-pub use driver_config::*;
-pub use driver_config_builder::*;
 pub use host::*;
+pub use session_config::*;
+pub use session_config_builder::*;

@@ -1,24 +1,27 @@
-use std::num::NonZeroUsize;
 use std::time::Duration;
 
 use crate::{
     Consistency,
     ContactPoint,
-    DriverConfigBuilder,
     ProtocolVersion,
+    SessionConfigBuilder,
     Ssl,
     TimestampGen,
 };
 
-// TODO: Implement the `Debug` trait for `DriverConfig`.
+// TODO: Implement the `Debug` trait for `SessionConfig`.
 // TODO: Think about better names for the fields including the prefixes for
 //       the fields that belong to the same group. Also, think about "time" vs
 //       "interval" vs "timeout" vs "wait_time" vs "period" vs "duration".
+// TODO: `whitelist_filtering`
+// TODO: `blacklist_filtering`
+// TODO: `whitelist_dc_filtering`
+// TODO: `blacklist_dc_filtering`
 
-/// The driver configuration.
+/// Cassandra session configuration.
 #[derive(Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct DriverConfig {
+pub struct SessionConfig {
     /// The list of contact points to use to connect to the Cassandra cluster.
     pub contact_points: Vec<ContactPoint>,
 
@@ -35,8 +38,8 @@ pub struct DriverConfig {
     ///
     /// While it is possible to serialize and deserialize the SSL configuration
     /// and then construct an instance of the [`Ssl`] type, it is unwise to do
-    /// so because it is all about security. So, deserialize the driver
-    /// configuration and then set the SSL configuration manually.
+    /// so because it is all about security. So, deserialize the configuration
+    /// and then set the SSL configuration manually.
     #[cfg_attr(feature = "serde", serde(skip))]
     pub ssl: Option<Ssl>,
 
@@ -347,9 +350,9 @@ pub struct DriverConfig {
     pub client_id: Option<String>,
 }
 
-impl DriverConfig {
-    /// Creates a new driver configuration builder.
-    pub fn builder() -> DriverConfigBuilder {
-        DriverConfigBuilder::default()
+impl SessionConfig {
+    /// Creates a new Cassandra session configuration builder.
+    pub fn builder() -> SessionConfigBuilder {
+        SessionConfigBuilder::default()
     }
 }

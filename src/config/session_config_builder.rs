@@ -1,29 +1,28 @@
-use std::num::NonZeroUsize;
 use std::time::Duration;
 
 use crate::{
     Consistency,
     ContactPoint,
-    DriverConfig,
     ProtocolVersion,
+    SessionConfig,
     Ssl,
     TimestampGen,
 };
 
-/// A builder for the driver configuration.
-pub struct DriverConfigBuilder {
-    config: DriverConfig,
+/// A builder for the Cassandra session configuration.
+pub struct SessionConfigBuilder {
+    config: SessionConfig,
 }
 
-impl DriverConfigBuilder {
-    /// Creates a new driver configuration builder.
+impl SessionConfigBuilder {
+    /// Creates a new Cassandra session configuration builder.
     pub fn new() -> Self {
         Self {
-            config: DriverConfig::default(),
+            config: SessionConfig::default(),
         }
     }
 
-    /// Adds a contact point to the driver configuration.
+    /// Adds a contact point to the session configuration.
     ///
     /// If no contact points are added, the driver will connect to localhost by
     /// default.
@@ -33,7 +32,7 @@ impl DriverConfigBuilder {
         self
     }
 
-    /// Adds multiple contact points to the driver configuration.
+    /// Adds multiple contact points to the session configuration.
     ///
     /// If no contact points are added, the driver will connect to localhost by
     /// default.
@@ -480,8 +479,8 @@ impl DriverConfigBuilder {
         self
     }
 
-    /// Builds the driver configuration consuming the builder.
-    pub fn build(mut self) -> DriverConfig {
+    /// Builds the session configuration consuming the builder.
+    pub fn build(mut self) -> SessionConfig {
         if self.config.contact_points.is_empty() {
             // Connect to localhost by default.
             self.config.contact_points.push(ContactPoint::default());
@@ -491,8 +490,8 @@ impl DriverConfigBuilder {
     }
 }
 
-impl Default for DriverConfigBuilder {
-    /// Creates a new driver configuration builder.
+impl Default for SessionConfigBuilder {
+    /// Creates a new Cassandra session configuration builder.
     fn default() -> Self {
         Self::new()
     }
