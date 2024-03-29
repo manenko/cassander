@@ -175,8 +175,8 @@ impl<R> DriverFuture<R> {
         unsafe { cass_future_wait(self.inner()) }
     }
 
-    /// The same as [`CassFuture::wait`] but timeouts after the given number of
-    /// microseconds.
+    /// The same as [`DriverFuture::wait`] but timeouts after the given number
+    /// of microseconds.
     ///
     /// Returns Ok(`false`) if returned due to timeout.
     ///

@@ -63,8 +63,8 @@ impl DriverErrorDetails {
     /// (`DriverErrorKind::Server*`).
     ///
     /// The method is internal because the error code is available through the
-    /// [`DriverError`] struct and duplication it here would make API more
-    /// confusing.
+    /// [`crate::DriverError`] struct and duplication it here would make API
+    /// more confusing.
     pub(crate) fn code(&self) -> DriverErrorKind {
         let code = unsafe { cass_error_result_code(self.inner()) };
 

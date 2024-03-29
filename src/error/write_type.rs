@@ -31,7 +31,7 @@ pub enum WriteType {
     /// A counter write (that can be for one or multiple partition key).
     Counter,
     /// An initial write to the distributed batch log that Cassandra performs
-    /// internally before a [`CassWriteType::Batch`] write.
+    /// internally before a [`WriteType::Batch`] write.
     BatchLog,
     /// A conditional write.
     Cas,

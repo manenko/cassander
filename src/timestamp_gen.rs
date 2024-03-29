@@ -40,14 +40,14 @@ impl TimestampGen {
     /// By default, this timestamp generator will generate warnings if more than
     /// 1 second of clock skew is detected. It will print an error every second
     /// until the clock skew is resolved. These settings can be changed by using
-    /// [`CassTimestampGen::monotonic_with_settings`] to create the generator
+    /// [`TimestampGen::monotonic_with_settings`] to create the generator
     /// instance.
     pub fn monotonic() -> Self {
         Self::from_driver(unsafe { cass_timestamp_gen_monotonic_new() })
     }
 
-    /// Same as [`CassTimestampGen::monotonic`] but with settings for
-    /// controlling warnings about clock skew.
+    /// Same as [`TimestampGen::monotonic`] but with settings for controlling
+    /// warnings about clock skew.
     ///
     /// The `warning_threshold` parameter is the number of microseconds of clock
     /// skew that will trigger a warning. A threshold less than 0 can be used to
