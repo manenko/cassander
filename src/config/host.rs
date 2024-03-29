@@ -21,6 +21,9 @@ pub struct HostParseError(String);
 ///
 /// A host can be either a domain name or an IP address.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "String"))]
+#[cfg_attr(feature = "serde", serde(into = "String"))]
 pub enum Host {
     // The host is a domain name.
     Domain(Domain),
@@ -40,10 +43,26 @@ impl FromStr for Host {
     }
 }
 
+impl TryFrom<String> for Host {
+    type Error = HostParseError;
+
+    /// Parses a host.
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        s.parse()
+    }
+}
+
 impl From<IpAddr> for Host {
     /// Converts an IP address into a host.
     fn from(ip_addr: IpAddr) -> Self {
         Host::IpAddr(ip_addr)
+    }
+}
+
+impl From<Host> for String {
+    /// Converts a host into a string.
+    fn from(host: Host) -> String {
+        host.to_string()
     }
 }
 

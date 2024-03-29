@@ -4,6 +4,7 @@ use crate::authenticator::Authenticator;
 use crate::{
     Consistency,
     ContactPoint,
+    Host,
     ProtocolVersion,
     SessionConfig,
     Ssl,
@@ -485,6 +486,109 @@ impl SessionConfigBuilder {
     /// The default authenticator is [`Authenticator::None`].
     pub fn authenticator(mut self, authenticator: Authenticator) -> Self {
         self.config.authenticator = Some(authenticator);
+
+        self
+    }
+
+    /// Adds a host to the list of hosts that are allowed to be connected to.
+    ///
+    /// Any host not in the whitelist will be ignored.
+    pub fn whitelist_host(mut self, host: Host) -> Self {
+        self.config.whitelisted_hosts.push(host);
+
+        self
+    }
+
+    /// Adds the given hosts to the list of hosts that are allowed to be
+    /// connected to.
+    ///
+    /// Any host not in the whitelist will be ignored.
+    pub fn whitelist_many_hosts<I>(mut self, hosts: I) -> Self
+    where
+        I: IntoIterator<Item = Host>,
+    {
+        self.config.whitelisted_hosts.extend(hosts);
+
+        self
+    }
+
+    /// Adds a datacenter to the list of datacenters which hosts are allowed to
+    /// be connected to.
+    ///
+    /// Any host not in the whitelist will be ignored.
+    pub fn whitelist_datacenter<S>(mut self, datacenter: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.config.whitelisted_datacenters.push(datacenter.into());
+
+        self
+    }
+
+    /// Adds the given datacenters to the list of datacenters which hosts are
+    /// allowed to be connected to.
+    ///
+    /// Any host not in the whitelist will be ignored.
+    pub fn whitelist_many_datacenters<I, S>(mut self, datacenters: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.config
+            .whitelisted_datacenters
+            .extend(datacenters.into_iter().map(Into::into));
+
+        self
+    }
+
+    /// Adds a host to the list of hosts that are not allowed to be connected
+    /// to.
+    ///
+    /// Any host in the blacklist will be ignored.
+    pub fn blacklist_host(mut self, host: Host) -> Self {
+        self.config.blacklisted_hosts.push(host);
+
+        self
+    }
+
+    /// Adds the given hosts to the list of hosts that are not allowed to be
+    /// connected to.
+    ///
+    /// Any host in the blacklist will be ignored.
+    pub fn blacklist_many_hosts<I>(mut self, hosts: I) -> Self
+    where
+        I: IntoIterator<Item = Host>,
+    {
+        self.config.blacklisted_hosts.extend(hosts);
+
+        self
+    }
+
+    /// Adds a datacenter to the list of datacenters which hosts are not allowed
+    /// to be connected to.
+    ///
+    /// Any host in the blacklist will be ignored.
+    pub fn blacklist_datacenter<S>(mut self, datacenter: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.config.blacklisted_datacenters.push(datacenter.into());
+
+        self
+    }
+
+    /// Adds the given datacenters to the list of datacenters which hosts are
+    /// not allowed to be connected to.
+    ///
+    /// Any host in the blacklist will be ignored.
+    pub fn blacklist_many_datacenters<I, S>(mut self, datacenters: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.config
+            .blacklisted_datacenters
+            .extend(datacenters.into_iter().map(Into::into));
 
         self
     }

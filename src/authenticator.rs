@@ -1,5 +1,8 @@
 //! Cassandra authentication providers.
 
+// TODO: Implement custom authentication provider via
+//       `cass_cluster_set_authenticator_callbacks`.
+
 use std::fmt::Debug;
 
 /// The authentication provider used by the driver.
@@ -22,5 +25,12 @@ impl Debug for Authenticator {
                 write!(f, "Authenticator::PlainText {{ ... }}")
             }
         }
+    }
+}
+
+impl Default for Authenticator {
+    /// Returns the default authenticator.
+    fn default() -> Self {
+        Authenticator::None
     }
 }

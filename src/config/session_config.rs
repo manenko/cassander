@@ -4,6 +4,7 @@ use crate::authenticator::Authenticator;
 use crate::{
     Consistency,
     ContactPoint,
+    Host,
     ProtocolVersion,
     SessionConfigBuilder,
     Ssl,
@@ -350,7 +351,34 @@ pub struct SessionConfig {
     /// Default value is a random UUID v4 string.
     pub client_id: Option<String>,
 
+    /// The authenticator used to authenticate to the Cassandra cluster.
+    ///
+    /// If not set, the default authenticator is [`Authenticator::None`].
     pub authenticator: Option<Authenticator>,
+
+    /// The list of hosts that are allowed to be connected to.
+    ///
+    /// Any host not in the list will be ignored and a connection will not be
+    /// established.
+    pub whitelisted_hosts: Vec<Host>,
+
+    /// The list of hosts that are not allowed to be connected to.
+    ///
+    /// Any host in the list will be ignored and a connection will not be
+    /// established.
+    pub blacklisted_hosts: Vec<Host>,
+
+    /// The list of datacenters which hosts are allowed to be connected to.
+    ///
+    /// Any host whose datacenter is not in the list will be ignored and a
+    /// connection will not be established.
+    pub whitelisted_datacenters: Vec<String>,
+
+    /// The list of datacenters which hosts are not allowed to be connected to.
+    ///
+    /// Any host whose datacenter is in the list will be ignored and a
+    /// connection will not be established.
+    pub blacklisted_datacenters: Vec<String>,
 }
 
 impl SessionConfig {
