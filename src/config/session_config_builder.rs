@@ -5,12 +5,14 @@ use crate::{
     Consistency,
     ContactPoint,
     Host,
+    LatencyAwareRoutingPolicy,
     ProtocolVersion,
     RetryPolicy,
     SessionConfig,
     SpeculativeExecutionPolicy,
     Ssl,
     TimestampGen,
+    TokenAwareRoutingPolicy,
 };
 
 /// A builder for the Cassandra session configuration.
@@ -618,6 +620,33 @@ impl SessionConfigBuilder {
         policy: SpeculativeExecutionPolicy,
     ) -> Self {
         self.config.speculative_execution_policy = Some(policy);
+
+        self
+    }
+
+    /// Configures the token-aware routing.
+    ///
+    /// The default token-aware routing is [`TokenAwareRoutingPolicy::Standard`]
+    /// which shuffles the replicas before routing the request.
+    pub fn token_aware_routing(
+        mut self,
+        policy: TokenAwareRoutingPolicy,
+    ) -> Self {
+        self.config.token_aware_routing_policy = Some(policy);
+
+        self
+    }
+
+    /// Configures the latency-aware routing.
+    ///
+    /// The default latency-aware routing is
+    /// [`LatencyAwareRoutingPolicy::None`] which disables latency-aware
+    /// routing.
+    pub fn latency_aware_routing(
+        mut self,
+        policy: LatencyAwareRoutingPolicy,
+    ) -> Self {
+        self.config.latency_aware_routing_policy = Some(policy);
 
         self
     }

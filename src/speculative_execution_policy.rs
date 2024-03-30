@@ -15,6 +15,10 @@ pub enum SpeculativeExecutionPolicy {
         ///
         /// A zero delay means it should immediately send `max_executions`
         /// requests along with the original request.
+        #[cfg_attr(
+            feature = "serde",
+            serde(with = "crate::serialization::duration_as_string")
+        )]
         delay:          Duration,
         /// The maximum number of speculative executions.
         max_executions: NonZeroUsize,

@@ -5,12 +5,14 @@ use crate::{
     Consistency,
     ContactPoint,
     Host,
+    LatencyAwareRoutingPolicy,
     ProtocolVersion,
     RetryPolicy,
     SessionConfigBuilder,
     SpeculativeExecutionPolicy,
     Ssl,
     TimestampGen,
+    TokenAwareRoutingPolicy,
 };
 
 // TODO: Implement the `Debug` trait for `SessionConfig`.
@@ -393,6 +395,20 @@ pub struct SessionConfig {
     /// [`SpeculativeExecutionPolicy::None`] which disables speculative
     /// executions.
     pub speculative_execution_policy: Option<SpeculativeExecutionPolicy>,
+
+    /// The token-aware routing policy.
+    ///
+    /// If not set, the default token-aware routing policy is
+    /// [`TokenAwareRoutingPolicy::Standard`] which shuffles the replicas
+    /// before routing the request.
+    pub token_aware_routing_policy: Option<TokenAwareRoutingPolicy>,
+
+    /// The latency-aware routing policy.
+    ///
+    /// If not set, the default latency-aware routing policy is
+    /// [`LatencyAwareRoutingPolicy::None`] which disables latency-aware
+    /// routing.
+    pub latency_aware_routing_policy: Option<LatencyAwareRoutingPolicy>,
 }
 
 impl SessionConfig {
