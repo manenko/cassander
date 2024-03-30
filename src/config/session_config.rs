@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::time::Duration;
 
 use crate::authenticator::Authenticator;
@@ -16,7 +17,6 @@ use crate::{
     TokenAwareRoutingPolicy,
 };
 
-// TODO: Implement the `Debug` trait for `SessionConfig`.
 // TODO: Think about better names for the fields including the prefixes for
 //       the fields that belong to the same group. Also, think about "time" vs
 //       "interval" vs "timeout" vs "wait_time" vs "period" vs "duration".
@@ -427,5 +427,84 @@ impl SessionConfig {
     /// Creates a new Cassandra session configuration builder.
     pub fn builder() -> SessionConfigBuilder {
         SessionConfigBuilder::default()
+    }
+}
+
+impl Debug for SessionConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionConfig")
+            .field("contact_points", &self.contact_points)
+            .field("port", &self.port)
+            .field("ssl", &self.ssl.as_ref().map(|_| "Ssl { ... }"))
+            .field("protocol_version", &self.protocol_version)
+            .field("consistency", &self.consistency)
+            .field("serial_consistency", &self.serial_consistency)
+            .field("io_threads_count", &self.io_threads_count)
+            .field("io_queue_size", &self.io_queue_size)
+            .field("event_queue_size", &self.event_queue_size)
+            .field("core_connections_per_host", &self.core_connections_per_host)
+            .field("max_connections_per_host", &self.max_connections_per_host)
+            .field("reconnect_wait_time", &self.reconnect_wait_time)
+            .field("max_concurrent_creation", &self.max_concurrent_creation)
+            .field("connect_timeout", &self.connect_timeout)
+            .field("request_timeout", &self.request_timeout)
+            .field("resolve_timeout", &self.resolve_timeout)
+            .field("max_schema_wait_time", &self.max_schema_wait_time)
+            .field("tracing_max_wait_time", &self.tracing_max_wait_time)
+            .field("tracing_retry_wait_time", &self.tracing_retry_wait_time)
+            .field("tracing_consistency", &self.tracing_consistency)
+            .field("keyspace", &self.keyspace)
+            .field("page_size", &self.page_size)
+            .field(
+                "timestamp_gen",
+                &self.timestamp_gen.as_ref().map(|_| "TimestampGen { ... }"),
+            )
+            .field("tcp_nodelay", &self.tcp_nodelay)
+            .field("tcp_keepalive", &self.tcp_keepalive)
+            .field(
+                "connection_heartbeat_interval",
+                &self.connection_heartbeat_interval,
+            )
+            .field("connection_idle_timeout", &self.connection_idle_timeout)
+            .field(
+                "monitor_reporting_interval",
+                &self.monitor_reporting_interval,
+            )
+            .field(
+                "metrics_histogram_refresh_interval",
+                &self.metrics_histogram_refresh_interval,
+            )
+            .field("schema_metadata", &self.schema_metadata)
+            .field("randomized_contact_points", &self.randomized_contact_points)
+            .field(
+                "max_reusable_write_objects",
+                &self.max_reusable_write_objects,
+            )
+            .field("prepare_on_all_hosts", &self.prepare_on_all_hosts)
+            .field("prepare_on_up_or_add_host", &self.prepare_on_up_or_add_host)
+            .field("no_compact", &self.no_compact)
+            .field("application_name", &self.application_name)
+            .field("application_version", &self.application_version)
+            .field("client_id", &self.client_id)
+            .field("authenticator", &self.authenticator)
+            .field("whitelisted_hosts", &self.whitelisted_hosts)
+            .field("blacklisted_hosts", &self.blacklisted_hosts)
+            .field("whitelisted_datacenters", &self.whitelisted_datacenters)
+            .field("blacklisted_datacenters", &self.blacklisted_datacenters)
+            .field("retry_policy", &self.retry_policy)
+            .field(
+                "speculative_execution_policy",
+                &self.speculative_execution_policy,
+            )
+            .field(
+                "token_aware_routing_policy",
+                &self.token_aware_routing_policy,
+            )
+            .field(
+                "latency_aware_routing_policy",
+                &self.latency_aware_routing_policy,
+            )
+            .field("load_balancing_policy", &self.load_balancing_policy)
+            .finish()
     }
 }
