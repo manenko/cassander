@@ -12,6 +12,9 @@ pub enum SpeculativeExecutionPolicy {
     /// executions, separated by a fixed delay.
     Constant {
         /// The delay between each speculative execution.
+        ///
+        /// A zero delay means it should immediately send `max_executions`
+        /// requests along with the original request.
         delay:          Duration,
         /// The maximum number of speculative executions.
         max_executions: NonZeroUsize,

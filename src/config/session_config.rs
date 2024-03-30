@@ -17,10 +17,6 @@ use crate::{
 // TODO: Think about better names for the fields including the prefixes for
 //       the fields that belong to the same group. Also, think about "time" vs
 //       "interval" vs "timeout" vs "wait_time" vs "period" vs "duration".
-// TODO: `whitelist_filtering`
-// TODO: `blacklist_filtering`
-// TODO: `whitelist_dc_filtering`
-// TODO: `blacklist_dc_filtering`
 
 /// Cassandra session configuration.
 #[derive(Default)]
