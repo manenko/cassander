@@ -6,6 +6,7 @@ use crate::{
     ContactPoint,
     Host,
     ProtocolVersion,
+    RetryPolicy,
     SessionConfigBuilder,
     Ssl,
     TimestampGen,
@@ -379,6 +380,12 @@ pub struct SessionConfig {
     /// Any host whose datacenter is in the list will be ignored and a
     /// connection will not be established.
     pub blacklisted_datacenters: Vec<String>,
+
+    /// The retry policy used for all requests unless overridden by setting
+    /// a retry policy on a statement or a batch.
+    ///
+    /// If not set, the default retry policy is [`RetryPolicy::Default`].
+    pub retry_policy: Option<RetryPolicy>,
 }
 
 impl SessionConfig {

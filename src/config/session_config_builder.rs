@@ -6,6 +6,7 @@ use crate::{
     ContactPoint,
     Host,
     ProtocolVersion,
+    RetryPolicy,
     SessionConfig,
     Ssl,
     TimestampGen,
@@ -589,6 +590,16 @@ impl SessionConfigBuilder {
         self.config
             .blacklisted_datacenters
             .extend(datacenters.into_iter().map(Into::into));
+
+        self
+    }
+
+    /// Sets the retry policy used for all requests unless overridden by setting
+    /// a retry policy on a statement or a batch.
+    ///
+    /// The default policy is [`RetryPolicy::Default`].
+    pub fn retry_policy(mut self, policy: RetryPolicy) -> Self {
+        self.config.retry_policy = Some(policy);
 
         self
     }
