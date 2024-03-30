@@ -64,11 +64,11 @@ use crate::ffi::{
 use crate::future::DriverFuture;
 use crate::{
     to_result,
+    CassRetryPolicy,
     Consistency,
     DriverError,
     DriverErrorKind,
     ProtocolVersion,
-    RetryPolicy,
     Session,
     Ssl,
     TimestampGen,
@@ -859,7 +859,7 @@ impl Cluster {
     /// In all other cases the default policy will return an error.
     pub fn set_retry_policy(
         &mut self,
-        policy: &RetryPolicy,
+        policy: &CassRetryPolicy,
     ) -> Result<(), DriverError> {
         unsafe { cass_cluster_set_retry_policy(self.inner(), policy.inner()) };
 

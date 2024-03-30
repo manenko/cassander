@@ -26,6 +26,7 @@ pub use cluster::*;
 pub use config::*;
 pub use consistency::*;
 pub use error::*;
+pub(crate) use retry_policy::CassRetryPolicy;
 pub use retry_policy::*;
 pub use session::*;
 pub use ssl::*;

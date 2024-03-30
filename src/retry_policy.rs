@@ -1,3 +1,5 @@
+use tracing::warn;
+
 use crate::ffi::{
     cass_retry_policy_default_new,
     cass_retry_policy_fallthrough_new,
@@ -7,10 +9,71 @@ use crate::ffi::{
 };
 
 /// A retry policy that defines a retry schedule for a query.
-#[repr(transparent)]
-pub struct RetryPolicy(*mut struct_CassRetryPolicy_);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum RetryPolicy {
+    /// A default retry policy.
+    ///
+    /// This policy retries queries in the following cases:
+    ///
+    /// - on a read timeout, if enough replicas replied but data was not
+    /// received;
+    /// - on a write timeout, if a timeout occurs while writing the distributed
+    /// batch log;
+    /// - on unavailable, it will move to the next host.
+    ///
+    /// In all other cases the error will be returned.
+    ///
+    /// This policy always uses the query's original consistency level.
+    ///
+    /// The `logging` field specifies whether the retry decision should be
+    /// logged.
+    Default { logging: bool },
 
-impl RetryPolicy {
+    /// A fallthrough retry policy.
+    ///
+    /// This policy never retries or ignores a server-side failure. The error
+    /// is always returned.
+    ///
+    /// The `logging` field specifies whether the retry decision should be
+    /// logged.
+    Fallthrough { logging: bool },
+}
+
+impl From<RetryPolicy> for CassRetryPolicy {
+    /// Converts a retry policy into a driver's retry policy.
+    fn from(policy: RetryPolicy) -> Self {
+        let (logging, retry_policy) = match policy {
+            RetryPolicy::Default {
+                logging,
+            } => (logging, CassRetryPolicy::new()),
+            RetryPolicy::Fallthrough {
+                logging,
+            } => (logging, CassRetryPolicy::fallthrough()),
+        };
+
+        if !logging {
+            return retry_policy;
+        }
+
+        if let Some(logging_policy) = CassRetryPolicy::logging(&retry_policy) {
+            logging_policy
+        } else {
+            // This should never happen because the logging policy is only fails
+            // if the `child_policy` is a logging retry policy which is not the
+            // case here.
+            warn!("Failed to enable logging for the {:?}", policy);
+
+            retry_policy
+        }
+    }
+}
+
+/// A retry policy that defines a retry schedule for a query.
+#[repr(transparent)]
+pub(crate) struct CassRetryPolicy(*mut struct_CassRetryPolicy_);
+
+impl CassRetryPolicy {
     /// Creates a new default retry policy.
     ///
     /// This policy retries queries in the following cases:
@@ -47,7 +110,7 @@ impl RetryPolicy {
     ///
     /// The function returns `None` if the `child_policy` is a logging retry
     /// policy.
-    pub fn logging(child_policy: &RetryPolicy) -> Option<Self> {
+    pub fn logging(child_policy: &CassRetryPolicy) -> Option<Self> {
         let policy =
             unsafe { cass_retry_policy_logging_new(child_policy.inner()) };
 
@@ -64,7 +127,7 @@ impl RetryPolicy {
     }
 }
 
-impl Default for RetryPolicy {
+impl Default for CassRetryPolicy {
     /// Creates a new default retry policy.
     ///
     /// This policy retries queries in the following cases:
@@ -83,7 +146,7 @@ impl Default for RetryPolicy {
     }
 }
 
-impl Drop for RetryPolicy {
+impl Drop for CassRetryPolicy {
     fn drop(&mut self) {
         unsafe { cass_retry_policy_free(self.inner()) }
     }
