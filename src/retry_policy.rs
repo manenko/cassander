@@ -25,19 +25,19 @@ pub enum RetryPolicy {
     /// In all other cases the error will be returned.
     ///
     /// This policy always uses the query's original consistency level.
-    ///
-    /// The `logging` field specifies whether the retry decision should be
-    /// logged.
-    Default { logging: bool },
+    Default {
+        /// Whether the retry decision should be logged.
+        logging: bool,
+    },
 
     /// A fallthrough retry policy.
     ///
     /// This policy never retries or ignores a server-side failure. The error
     /// is always returned.
-    ///
-    /// The `logging` field specifies whether the retry decision should be
-    /// logged.
-    Fallthrough { logging: bool },
+    Fallthrough {
+        /// Whether the retry decision should be logged.
+        logging: bool,
+    },
 }
 
 impl From<RetryPolicy> for CassRetryPolicy {

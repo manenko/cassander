@@ -8,6 +8,7 @@ use crate::{
     ProtocolVersion,
     RetryPolicy,
     SessionConfigBuilder,
+    SpeculativeExecutionPolicy,
     Ssl,
     TimestampGen,
 };
@@ -386,6 +387,16 @@ pub struct SessionConfig {
     ///
     /// If not set, the default retry policy is [`RetryPolicy::Default`].
     pub retry_policy: Option<RetryPolicy>,
+
+    /// Configures the speculative executions for queries.
+    ///
+    /// This policy that decides if the driver will send speculative queries to
+    /// the next nodes when the current node takes too long to respond.
+    ///
+    /// If not set, the default speculative execution policy is
+    /// [`SpeculativeExecutionPolicy::None`] which disables speculative
+    /// executions.
+    pub speculative_execution_policy: Option<SpeculativeExecutionPolicy>,
 }
 
 impl SessionConfig {
