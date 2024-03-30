@@ -6,6 +6,7 @@ use crate::{
     ContactPoint,
     Host,
     LatencyAwareRoutingPolicy,
+    LoadBalancingPolicy,
     ProtocolVersion,
     RetryPolicy,
     SessionConfigBuilder,
@@ -409,6 +410,17 @@ pub struct SessionConfig {
     /// [`LatencyAwareRoutingPolicy::None`] which disables latency-aware
     /// routing.
     pub latency_aware_routing_policy: Option<LatencyAwareRoutingPolicy>,
+
+    /// The load balancing policy to use when selecting a node to send a
+    /// request to.
+    ///
+    /// This configures which nodes the driver talks to, and in which order
+    /// they are tried.
+    ///
+    /// If not set, the default load balancing policy is
+    /// [`LoadBalancingPolicy::DatacenterAware`]. It is strongly recommended
+    /// to use the default load balancing policy.
+    pub load_balancing_policy: Option<LoadBalancingPolicy>,
 }
 
 impl SessionConfig {
