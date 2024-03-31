@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::authenticator::Authenticator;
+use crate::cql::CqlUuid;
 use crate::{
     Consistency,
     ContactPoint,
@@ -476,12 +477,9 @@ impl SessionConfigBuilder {
     /// identifier that can aid in debugging issues with larger clusters where
     /// there are a lot of client (or application) connections.
     ///
-    /// Default value is a random UUID v4 string.
-    pub fn client_id<S>(mut self, id: S) -> Self
-    where
-        S: Into<String>,
-    {
-        self.config.client_id = Some(id.into());
+    /// Default value is a random UUID v4.
+    pub fn client_id(mut self, id: CqlUuid) -> Self {
+        self.config.client_id = Some(id);
 
         self
     }

@@ -25,7 +25,7 @@ pub mod authenticator;
 pub mod cql;
 pub mod logging;
 
-pub use cluster::*;
+pub(crate) use cluster::Cluster;
 pub use config::*;
 pub use consistency::*;
 pub use error::*;

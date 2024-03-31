@@ -1,5 +1,5 @@
 use std::ffi::c_char;
-use std::num::NonZeroI64;
+use std::num::NonZeroU64;
 
 use crate::cql::CqlUuid;
 use crate::ffi::{
@@ -86,7 +86,7 @@ use crate::{
 /// Unlike other DataStax drivers the cluster object does not maintain the
 /// control connection.
 #[repr(transparent)]
-pub struct Cluster(*mut struct_CassCluster_);
+pub(crate) struct Cluster(*mut struct_CassCluster_);
 
 impl Cluster {
     /// Creates a new cluster object.
@@ -295,7 +295,7 @@ impl Cluster {
     /// The default value is 2000ms.
     pub fn set_reconnect_wait_time(
         &mut self,
-        wait_time: i64,
+        wait_time: u64,
     ) -> Result<(), DriverError> {
         let wait_time = wait_time.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -354,7 +354,7 @@ impl Cluster {
     /// The default value is 12000ms.
     pub fn set_request_timeout(
         &mut self,
-        timeout: i64,
+        timeout: u64,
     ) -> Result<(), DriverError> {
         let timeout = timeout.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -370,7 +370,7 @@ impl Cluster {
     /// The default value is 2000ms.
     pub fn set_resolve_timeout(
         &mut self,
-        timeout: i64,
+        timeout: u64,
     ) -> Result<(), DriverError> {
         let timeout = timeout.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -388,7 +388,7 @@ impl Cluster {
     /// The default value is 10000ms.
     pub fn set_max_schema_wait_time(
         &mut self,
-        wait_time: i64,
+        wait_time: u64,
     ) -> Result<(), DriverError> {
         let wait_time = wait_time.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -407,7 +407,7 @@ impl Cluster {
     /// The default value is 15ms.
     pub fn set_tracing_max_wait_time(
         &mut self,
-        wait_time: i64,
+        wait_time: u64,
     ) -> Result<(), DriverError> {
         let wait_time = wait_time.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -426,7 +426,7 @@ impl Cluster {
     /// The default value is 3ms.
     pub fn set_tracing_retry_wait_time(
         &mut self,
-        wait_time: i64,
+        wait_time: u64,
     ) -> Result<(), DriverError> {
         let wait_time = wait_time.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -508,21 +508,9 @@ impl Cluster {
     /// default `local_dc` is chosen from the first connected contact point, and
     /// no remote hosts are considered in query plans. If relying on this
     /// mechanism, be sure to use only contact points from the local datacenter.
-    ///
-    /// <div class="warning">
-    /// The remote datacenter settings for DC-aware load balacing are not
-    /// suitable for most scenarios that require a datacenter failover. There is
-    /// also unhandled gap between the number of nodes failing and the full
-    /// cluster failing. Thus the remote datacenter settings are deprecated:
-    ///
-    /// - `used_hosts_per_remote_dc`
-    /// - `allow_remote_dcs_for_local_cl`
-    /// </div>
     pub fn set_load_balance_dc_aware<T>(
         &mut self,
         local_dc: T,
-        used_hosts_per_remote_dc: usize,
-        allow_remote_dcs_for_local_cl: bool,
     ) -> Result<(), DriverError>
     where
         T: AsRef<str>,
@@ -531,10 +519,8 @@ impl Cluster {
         let local_dc_len = local_dc.len();
         let local_dc_ptr = local_dc.as_ptr() as *const c_char;
 
-        let used_hosts_per_remote_dc =
-            used_hosts_per_remote_dc.try_into().map_err(|_| {
-                DriverError::with_kind(DriverErrorKind::LibBadParams)
-            })?;
+        let used_hosts_per_remote_dc = 0;
+        let allow_remote_dcs_for_local_cl = false;
 
         let code = unsafe {
             cass_cluster_set_load_balance_dc_aware_n(
@@ -640,9 +626,9 @@ impl Cluster {
     pub fn set_latency_aware_routing_settings(
         &mut self,
         exclusion_threshold: f64,
-        scale: i64,
-        retry_period: i64,
-        update_rate: i64,
+        scale: u64,
+        retry_period: u64,
+        update_rate: u64,
         min_measured: usize,
     ) -> Result<(), DriverError> {
         let scale = scale.try_into().map_err(|_| {
@@ -789,7 +775,7 @@ impl Cluster {
     /// The default value is `None` (disable TCP keep-alive).
     pub fn set_tcp_keepalive(
         &mut self,
-        delay: Option<i64>,
+        delay: Option<u64>,
     ) -> Result<(), DriverError> {
         let enable = delay.is_some();
         let delay = delay.unwrap_or(0).try_into().map_err(|_| {
@@ -813,7 +799,7 @@ impl Cluster {
     /// The default value is 30 seconds.
     pub fn set_connection_heartbeat_interval(
         &mut self,
-        interval: i64,
+        interval: u64,
     ) -> Result<(), DriverError> {
         let interval = interval.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -836,7 +822,7 @@ impl Cluster {
     /// The default value is 60 seconds.
     pub fn set_connection_idle_timeout(
         &mut self,
-        timeout: i64,
+        timeout: u64,
     ) -> Result<(), DriverError> {
         let timeout = timeout.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -910,9 +896,13 @@ impl Cluster {
     /// `max_speculative_executions` requests along with the original request.
     pub fn set_constant_speculative_execution_policy(
         &mut self,
-        delay: i64,
+        delay: u64,
         max_speculative_executions: usize,
     ) -> Result<(), DriverError> {
+        let delay = delay.try_into().map_err(|_| {
+            DriverError::with_kind(DriverErrorKind::LibBadParams)
+        })?;
+
         let max_speculative_executions =
             max_speculative_executions.try_into().map_err(|_| {
                 DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -1083,7 +1073,7 @@ impl Cluster {
     /// The default value is 300 seconds.
     pub fn set_monitor_reporting_interval(
         &mut self,
-        interval: i64,
+        interval: u64,
     ) -> Result<(), DriverError> {
         let interval = interval.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -1108,7 +1098,7 @@ impl Cluster {
     /// and replicates the behaviour of previous versions.
     pub fn set_histogram_refresh_interval(
         &mut self,
-        interval: NonZeroI64,
+        interval: NonZeroU64,
     ) -> Result<(), DriverError> {
         let interval = interval.get().try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)

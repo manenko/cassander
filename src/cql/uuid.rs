@@ -35,6 +35,9 @@ pub enum CqlUuidVersion {
 /// Version 1 (time-based) or version 4 (random) UUID.
 #[derive(Debug, Copy, Clone)]
 #[repr(transparent)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "String"))]
+#[cfg_attr(feature = "serde", serde(into = "String"))]
 pub struct CqlUuid(struct_CassUuid_);
 
 impl CqlUuid {
@@ -200,6 +203,22 @@ impl FromStr for CqlUuid {
         };
 
         to_result::<()>(code).map(|_| Self(uuid))
+    }
+}
+
+impl TryFrom<String> for CqlUuid {
+    type Error = DriverError;
+
+    /// Converts a string to a UUID.
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::from_str(&value)
+    }
+}
+
+impl From<CqlUuid> for String {
+    /// Converts a UUID to a string.
+    fn from(value: CqlUuid) -> Self {
+        value.to_string()
     }
 }
 
