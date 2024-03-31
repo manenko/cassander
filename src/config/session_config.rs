@@ -582,9 +582,10 @@ impl TryFrom<SessionConfig> for Cluster {
             blacklisted_datacenters            apply_blacklisted_datacenters,
             blacklisted_hosts                  apply_blacklisted_hosts,
             client_id                          apply_client_id,
-            consistency                        apply_consistency,
+            connect_timeout                    apply_connect_timeout,
             connection_heartbeat_interval      apply_connection_heartbeat_interval,
             connection_idle_timeout            apply_connection_idle_timeout,
+            consistency                        apply_consistency,
             contact_points                     apply_contact_points,
             core_connections_per_host          apply_core_connections_per_host,
             event_queue_size                   apply_event_queue_size,
@@ -592,8 +593,8 @@ impl TryFrom<SessionConfig> for Cluster {
             io_threads_count                   apply_io_threads_count,
             latency_aware_routing_policy       apply_latency_aware_routing_policy,
             load_balancing_policy              apply_load_balancing_policy,
-            max_connections_per_host           apply_max_connections_per_host,
             max_concurrent_creation            apply_max_concurrent_creation,
+            max_connections_per_host           apply_max_connections_per_host,
             max_reusable_write_objects         apply_max_reusable_write_objects,
             max_schema_wait_time               apply_max_schema_wait_time,
             metrics_histogram_refresh_interval apply_metrics_histogram_refresh_interval,
@@ -747,6 +748,22 @@ fn apply_consistency(
     Ok(())
 }
 
+fn apply_connect_timeout(
+    cluster: &mut Cluster,
+    timeout: Option<Duration>,
+) -> Result<(), SessionConfigError> {
+    let option = "connect_timeout";
+
+    timeout
+        .map(|t| into_milliseconds(t, option))
+        .transpose()?
+        .map(|t| cluster.set_connect_timeout(t))
+        .transpose()
+        .map_err(|e| SessionConfigError::new(option, e))?;
+
+    Ok(())
+}
+
 fn apply_connection_heartbeat_interval(
     cluster: &mut Cluster,
     interval: Option<Duration>,
@@ -893,7 +910,8 @@ fn apply_load_balancing_policy(
             //
             // See https://datastax-oss.atlassian.net/browse/CPP-998
             // TODO: What should we do about this? Any workarounds should go
-            //       to the `Cluster` implementation.
+            //       to the `Cluster` implementation. For now, let's replicate
+            //       the behavior of the driver.
             let local_dc = local_dc.unwrap_or_default();
             cluster
                 .set_load_balance_dc_aware(local_dc)
@@ -959,9 +977,9 @@ fn apply_max_schema_wait_time(
     let option = "max_schema_wait_time";
 
     wait_time
-        .map(|wait_time| into_milliseconds(wait_time, option))
+        .map(|t| into_milliseconds(t, option))
         .transpose()?
-        .map(|wait_time| cluster.set_max_schema_wait_time(wait_time))
+        .map(|t| cluster.set_max_schema_wait_time(t))
         .transpose()
         .map_err(|e| SessionConfigError::new(option, e))?;
 

@@ -55,13 +55,10 @@ use crate::ffi::{
     cass_cluster_set_use_schema,
     cass_cluster_set_whitelist_dc_filtering_n,
     cass_cluster_set_whitelist_filtering_n,
-    cass_session_connect,
-    cass_session_connect_keyspace_n,
     enum_cass_bool_t_cass_false as CASS_FALSE,
     enum_cass_bool_t_cass_true as CASS_TRUE,
     struct_CassCluster_,
 };
-use crate::future::DriverFuture;
 use crate::{
     to_result,
     CassRetryPolicy,
@@ -69,7 +66,6 @@ use crate::{
     DriverError,
     DriverErrorKind,
     ProtocolVersion,
-    Session,
     Ssl,
     TimestampGen,
 };
@@ -338,7 +334,7 @@ impl Cluster {
     /// The default value is 5000ms.
     pub fn set_connect_timeout(
         &mut self,
-        timeout: i64,
+        timeout: u64,
     ) -> Result<(), DriverError> {
         let timeout = timeout.try_into().map_err(|_| {
             DriverError::with_kind(DriverErrorKind::LibBadParams)
@@ -1123,42 +1119,6 @@ impl Cluster {
         unsafe { cass_cluster_set_timestamp_gen(self.inner(), gen.inner()) };
 
         Ok(())
-    }
-
-    /// Connects to the cluster and returns a session.
-    pub async fn connect(self) -> Result<Session, DriverError> {
-        let session = Session::new();
-        let future =
-            unsafe { cass_session_connect(session.inner(), self.inner()) };
-        let future = DriverFuture::new(future, session);
-
-        future.await
-    }
-
-    /// Connects to the cluster and returns a session with the specified
-    /// keyspace set as default.
-    pub async fn connect_keyspace<T>(
-        &self,
-        keyspace: T,
-    ) -> Result<Session, DriverError>
-    where
-        T: AsRef<str>,
-    {
-        let session = Session::new();
-        let keyspace = keyspace.as_ref();
-        let keyspace_len = keyspace.len();
-        let keyspace_ptr = keyspace.as_ptr() as *const c_char;
-        let future = unsafe {
-            cass_session_connect_keyspace_n(
-                session.inner(),
-                self.inner(),
-                keyspace_ptr,
-                keyspace_len,
-            )
-        };
-        let future = DriverFuture::new(future, session);
-
-        future.await
     }
 }
 
