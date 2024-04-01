@@ -625,7 +625,8 @@ impl TryFrom<SessionConfig> for Cluster {
         );
 
         // The `keyspace` and `page_size` fields are not in the `Cluster`
-        // configuration. They should be set on the session object instead.
+        // configuration. They are set on the session object instead upon
+        // creation.
 
         Ok(cluster)
     }
