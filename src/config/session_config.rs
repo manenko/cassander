@@ -20,7 +20,9 @@ use crate::{
     LoadBalancingPolicy,
     ProtocolVersion,
     RetryPolicy,
+    Session,
     SessionConfigBuilder,
+    SessionCreationError,
     SpeculativeExecutionPolicy,
     Ssl,
     StandardLatencyAwareRoutingPolicySettings,
@@ -441,6 +443,11 @@ impl SessionConfig {
     /// Creates a new Cassandra session configuration builder.
     pub fn builder() -> SessionConfigBuilder {
         SessionConfigBuilder::default()
+    }
+
+    /// Connects to the Cassandra cluster using the session configuration.
+    pub async fn connect(self) -> Result<Session, SessionCreationError> {
+        Session::connect(self).await
     }
 }
 

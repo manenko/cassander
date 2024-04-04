@@ -38,18 +38,18 @@ pub enum SessionCreationError {
 /// connections to cluster nodes which are used to query the cluster.
 #[derive(Clone)]
 pub struct Session {
-    inner:     Arc<SessionWrapper>,
-    page_size: Option<usize>,
+    inner:  Arc<SessionWrapper>,
+    config: Arc<Config>,
 }
 
 impl Session {
     /// Creates a new Cassandra session.
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(config: Config) -> Self {
         let session = unsafe { cass_session_new() };
 
         Self {
-            inner:     Arc::new(SessionWrapper(session)),
-            page_size: None,
+            inner:  Arc::new(SessionWrapper(session)),
+            config: Arc::new(config),
         }
     }
 
@@ -59,7 +59,7 @@ impl Session {
     }
 
     /// Connects to the cluster and returns a session.
-    pub async fn connect(
+    pub(crate) async fn connect(
         mut config: SessionConfig,
     ) -> Result<Session, SessionCreationError> {
         let keyspace = std::mem::take(&mut config.keyspace);
@@ -67,20 +67,28 @@ impl Session {
 
         let cluster: Cluster = config.try_into()?;
 
-        let mut session = match keyspace {
-            Some(keyspace) => Self::connect_keyspace(cluster, keyspace).await?,
-            None => Self::connect_no_keyspace(cluster).await?,
+        let config = Config {
+            page_size,
+            keyspace: keyspace.clone(),
         };
 
-        session.page_size = page_size;
+        let session = Self::new(config);
+
+        let session = match keyspace {
+            Some(keyspace) => {
+                Self::connect_keyspace(session, cluster, keyspace).await?
+            }
+            None => Self::connect_no_keyspace(session, cluster).await?,
+        };
 
         Ok(session)
     }
 
     /// Connects to the cluster without specifying a keyspace.
-    fn connect_no_keyspace(cluster: Cluster) -> DriverFuture<Session> {
-        let session = Self::new();
-
+    fn connect_no_keyspace(
+        session: Self,
+        cluster: Cluster,
+    ) -> DriverFuture<Self> {
         let future =
             unsafe { cass_session_connect(session.inner(), cluster.inner()) };
 
@@ -89,14 +97,13 @@ impl Session {
 
     /// Connects to the cluster and sets the default keyspace.
     fn connect_keyspace<T>(
+        session: Self,
         cluster: Cluster,
         keyspace: T,
-    ) -> DriverFuture<Session>
+    ) -> DriverFuture<Self>
     where
         T: AsRef<str>,
     {
-        let session = Self::new();
-
         let keyspace = keyspace.as_ref();
         let keyspace_len = keyspace.len();
         let keyspace_ptr = keyspace.as_ptr() as *const c_char;
@@ -114,11 +121,12 @@ impl Session {
     }
 }
 
-impl Default for Session {
-    /// Creates a new Cassandra session.
-    fn default() -> Self {
-        Self::new()
-    }
+/// A configuration used by the [`Session`] which is not part of the driver's
+/// `CassCluster` and thus should be used separately.
+#[derive(Debug)]
+struct Config {
+    page_size: Option<usize>,
+    keyspace:  Option<String>,
 }
 
 #[repr(transparent)]
