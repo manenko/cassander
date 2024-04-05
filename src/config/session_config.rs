@@ -40,13 +40,24 @@ use crate::{
 /// Cassandra session configuration.
 #[derive(Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "snake_case"))]
 pub struct SessionConfig {
     /// The list of contact points to use to connect to the Cassandra cluster.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Vec::is_empty")
+    )]
     pub contact_points: Vec<ContactPoint>,
 
     /// The port to use for the control connection.
     ///
     /// If not set, the default port 9042 is used.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub port: Option<u16>,
 
     /// The SSL configuration.
@@ -68,50 +79,95 @@ pub struct SessionConfig {
     /// version.
     ///
     /// If not set, the default value is [`ProtocolVersion::V4`].
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub protocol_version: Option<ProtocolVersion>,
 
     /// The default consistency level of a statement.
     ///
     /// If not set, the default value is [`Consistency::LocalOne`].
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub consistency: Option<Consistency>,
 
     /// The default serial consistency level of a statement.
     ///
     /// If not set, the default value is [`Consistency::Any`].
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub serial_consistency: Option<Consistency>,
 
     /// The number of I/O threads that will handle query requests.
     ///
     /// If not set, the default value is 1.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub io_threads_count: Option<usize>,
 
     /// The size of the fixed size queue that stores pending requests.
     ///
     /// If not set, the default value is 8192.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub io_queue_size: Option<usize>,
 
     /// The size of the fixed size queue that stores events.
     //
     /// If not set, the default value is 8192.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub event_queue_size: Option<usize>,
 
     /// The number of connections made to each server in each I/O thread.
     ///
     /// If not set, the default value is 1.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub core_connections_per_host: Option<usize>,
 
     /// The maximum number of connections made to each server in each I/O
     /// thread.
     ///
     /// If not set, the default value is 2.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub max_connections_per_host: Option<usize>,
 
     /// The wait time before attempting to reconnect.
     ///
     /// If not set, the default value is 2000 milliseconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub reconnect_wait_time: Option<Duration>,
 
@@ -121,32 +177,52 @@ pub struct SessionConfig {
     /// up with request throughput.
     ///
     /// If not set, the default value is 1.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub max_concurrent_creation: Option<usize>,
 
     /// The timeout for establishing a connection to a Cassandra node.
     ///
     /// If not set, the default value is 5000 milliseconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub connect_timeout: Option<Duration>,
 
     /// The timeout for waiting for a response from a Cassandra node.
     ///
     /// If not set, the default value is 12000 milliseconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub request_timeout: Option<Duration>,
 
     /// The timeout for waiting for DNS name resolution.
     ///
     /// If not set, the default value is 2000 milliseconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub resolve_timeout: Option<Duration>,
 
@@ -155,18 +231,28 @@ pub struct SessionConfig {
     /// etc).
     ///
     /// If not set, the default value is 10000 milliseconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub max_schema_wait_time: Option<Duration>,
 
     /// The maximum time to wait for tracing data to become available.
     ///
     /// If not set, the default value is 15 milliseconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub tracing_max_wait_time: Option<Duration>,
 
@@ -174,9 +260,14 @@ pub struct SessionConfig {
     /// is available.
     ///
     /// If not set, the default value is 3 milliseconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub tracing_retry_wait_time: Option<Duration>,
 
@@ -184,12 +275,22 @@ pub struct SessionConfig {
     /// available.
     ///
     /// If not set, the default value is [`Consistency::One`].
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub tracing_consistency: Option<Consistency>,
 
     /// The default keyspace to use for all queries.
     ///
     /// If not set, the default keyspace is not used. The queries must specify
     /// the keyspace explicitly (`keyspace_name.table_name`).
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub keyspace: Option<String>,
 
     /// The page size for all queries unless overridden by setting it on a
@@ -198,6 +299,11 @@ pub struct SessionConfig {
     /// Setting a value of 0 disables paging.
     ///
     /// The paging is disabled by default.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub page_size: Option<usize>,
 
     /// The timestamp generator used to assign timestamps to all queries unless
@@ -220,6 +326,11 @@ pub struct SessionConfig {
     /// small packets, which results in poor utilization of the network.
     ///
     /// Nagle's algorithm is disabled by default.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub tcp_nodelay: Option<bool>,
 
     /// The keepalive period for the TCP connection.
@@ -229,6 +340,11 @@ pub struct SessionConfig {
     /// the keepalive.
     ///
     /// If not set, the keepalive is disabled.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub tcp_keepalive: Option<Duration>,
 
     /// The amount of time between heartbeat messages to keep the connection
@@ -238,9 +354,14 @@ pub struct SessionConfig {
     /// dropping connections.
     ///
     /// If not set, the default value is 30 seconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub connection_heartbeat_interval: Option<Duration>,
 
@@ -249,9 +370,14 @@ pub struct SessionConfig {
     /// reconnection.
     ///
     /// If not set, the default value is 60 seconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub connection_idle_timeout: Option<Duration>,
 
@@ -261,9 +387,14 @@ pub struct SessionConfig {
     /// event messages.
     ///
     /// If not set, the default value is 300 seconds.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub monitor_reporting_interval: Option<Duration>,
 
@@ -279,9 +410,14 @@ pub struct SessionConfig {
     /// If refresh is not enabled the driver will continue to accumulate
     /// histogram data over the life of a session; this is the default
     /// behaviour.
+    #[cfg_attr(feature = "serde", serde(default))]
     #[cfg_attr(
         feature = "serde",
         serde(with = "crate::serialization::opt_duration_as_string")
+    )]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
     )]
     pub metrics_histogram_refresh_interval: Option<Duration>,
 
@@ -293,6 +429,11 @@ pub struct SessionConfig {
     /// short-lived sessions.
     ///
     /// The schema metadata is enabled by default.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub schema_metadata: Option<bool>,
 
     /// Enables/disables the randomization of the contact points list.
@@ -302,6 +443,11 @@ pub struct SessionConfig {
     /// </div>
     ///
     /// This is enabled by default.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub randomized_contact_points: Option<bool>,
 
     /// The maximum number of "pending write" objects that will be saved for
@@ -315,11 +461,21 @@ pub struct SessionConfig {
     /// marshalling of requests prior to sending.
     ///
     /// If not set, the default value is [`u32::MAX`].
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub max_reusable_write_objects: Option<usize>,
 
     /// Enables/disables preparation of statements on all available hosts.
     ///
     /// This is enabled by default.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub prepare_on_all_hosts: Option<bool>,
 
     /// Enables/disables pre-preparing cached prepared statements when existing
@@ -333,6 +489,11 @@ pub struct SessionConfig {
     /// hosts as they become available.
     ///
     /// This is enabled by default.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub prepare_on_up_or_add_host: Option<bool>,
 
     /// Enables/disables the `NO_COMPACT` startup option.
@@ -342,6 +503,11 @@ pub struct SessionConfig {
     /// `BATCH`, `DELETE`, `SELECT`, and `UPDATE` CQL operations.
     ///
     /// The option is disabled by default.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub no_compact: Option<bool>,
 
     /// The application name.
@@ -349,6 +515,11 @@ pub struct SessionConfig {
     /// This is optional; however it provides the server with the application
     /// name that can aid in debugging issues with larger clusters where there
     /// are a lot of client (or application) connections.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub application_name: Option<String>,
 
     /// The application version.
@@ -357,6 +528,11 @@ pub struct SessionConfig {
     /// version that can aid in debugging issues with larger clusters where
     /// there are a lot of client (or application) connections that may have
     /// different versions in use.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub application_version: Option<String>,
 
     /// The client identifier.
@@ -366,35 +542,65 @@ pub struct SessionConfig {
     /// there are a lot of client (or application) connections.
     ///
     /// Default value is a random UUID v4.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub client_id: Option<CqlUuid>,
 
     /// The authenticator used to authenticate to the Cassandra cluster.
     ///
     /// If not set, the default authenticator is [`Authenticator::None`].
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub authenticator: Option<Authenticator>,
 
     /// The list of hosts that are allowed to be connected to.
     ///
     /// Any host not in the list will be ignored and a connection will not be
     /// established.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Vec::is_empty")
+    )]
     pub whitelisted_hosts: Vec<Host>,
 
     /// The list of hosts that are not allowed to be connected to.
     ///
     /// Any host in the list will be ignored and a connection will not be
     /// established.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Vec::is_empty")
+    )]
     pub blacklisted_hosts: Vec<Host>,
 
     /// The list of datacenters which hosts are allowed to be connected to.
     ///
     /// Any host whose datacenter is not in the list will be ignored and a
     /// connection will not be established.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Vec::is_empty")
+    )]
     pub whitelisted_datacenters: Vec<String>,
 
     /// The list of datacenters which hosts are not allowed to be connected to.
     ///
     /// Any host whose datacenter is in the list will be ignored and a
     /// connection will not be established.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Vec::is_empty")
+    )]
     pub blacklisted_datacenters: Vec<String>,
 
     /// The retry policy used for all requests unless overridden by setting
@@ -411,6 +617,11 @@ pub struct SessionConfig {
     /// If not set, the default speculative execution policy is
     /// [`SpeculativeExecutionPolicy::None`] which disables speculative
     /// executions.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub speculative_execution_policy: Option<SpeculativeExecutionPolicy>,
 
     /// The token-aware routing policy.
@@ -418,6 +629,11 @@ pub struct SessionConfig {
     /// If not set, the default token-aware routing policy is
     /// [`TokenAwareRoutingPolicy::Standard`] which shuffles the replicas
     /// before routing the request.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub token_aware_routing_policy: Option<TokenAwareRoutingPolicy>,
 
     /// The latency-aware routing policy.
@@ -425,6 +641,11 @@ pub struct SessionConfig {
     /// If not set, the default latency-aware routing policy is
     /// [`LatencyAwareRoutingPolicy::None`] which disables latency-aware
     /// routing.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub latency_aware_routing_policy: Option<LatencyAwareRoutingPolicy>,
 
     /// The load balancing policy to use when selecting a node to send a
@@ -436,6 +657,11 @@ pub struct SessionConfig {
     /// If not set, the default load balancing policy is
     /// [`LoadBalancingPolicy::DatacenterAware`]. It is strongly recommended
     /// to use the default load balancing policy.
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(
+        feature = "serde",
+        serde(skip_serializing_if = "Option::is_none")
+    )]
     pub load_balancing_policy: Option<LoadBalancingPolicy>,
 }
 

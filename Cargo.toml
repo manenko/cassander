@@ -14,7 +14,6 @@
 
 [features]
   bigdecimal      = [ "dep:bigdecimal" ]
-  chrono          = [ "dep:chrono"     ]
   num-bigint      = [ "dep:num-bigint" ]
   serde           = [ "dep:serde", "dep:duration-string", "duration-string/serde" ]
   uuid            = [ "dep:uuid"       ]
@@ -28,7 +27,6 @@
   tracing         = { version = "0.1", features = ["std"], default-features = false }
   # Optional dependencies --------------------------------------------------------
   bigdecimal      = { version = "0.4", optional = true }
-  chrono          = { version = "0.4", default-features = false, optional = true }
   num-bigint      = { version = "0.4", optional = true }
   duration-string = { version = "0.3", optional = true }
   serde           = { version = "1.0", features = ["derive"], optional = true }

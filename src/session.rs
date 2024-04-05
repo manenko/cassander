@@ -4,6 +4,7 @@ use std::sync::Arc;
 use thiserror::Error;
 
 use crate::ffi::{
+    cass_session_close,
     cass_session_connect,
     cass_session_connect_keyspace_n,
     cass_session_free,
@@ -44,7 +45,7 @@ pub struct Session {
 
 impl Session {
     /// Creates a new Cassandra session.
-    pub(crate) fn new(config: Config) -> Self {
+    fn new(config: Config) -> Self {
         let session = unsafe { cass_session_new() };
 
         Self {
@@ -56,6 +57,13 @@ impl Session {
     /// Returns the raw pointer to the session object.
     pub(crate) fn inner(&self) -> *mut struct_CassSession_ {
         self.inner.inner()
+    }
+
+    /// Closes the session and releases all resources.
+    pub async fn close(self) -> Result<(), DriverError> {
+        let future = unsafe { cass_session_close(self.inner()) };
+
+        DriverFuture::new(future, self).await
     }
 
     /// Connects to the cluster and returns a session.
