@@ -57,7 +57,7 @@ async fn main() -> Result<()> {
 
 ### Deserializing `SessionConfig` from a TOML file
 
-To utilize this feature, update your application's `Cargo.toml` to include necessary dependencies:
+Update your application's `Cargo.toml` to include necessary dependencies and enable Cassander's `serde` feature:
 
 ```toml
 [dependencies]
