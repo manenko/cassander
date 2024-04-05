@@ -24,7 +24,38 @@ Cassander comes with several optional features to enhance its functionality for 
 
 The `serde` feature allows for serialization and deserialization of `SessionConfig` through the [`serde`](https://docs.rs/serde/latest/serde/) crate, facilitating the storage of driver configurations in a file for application loading.
 
-#### Deserializing `SessionConfig` from a TOML file
+Duration values are serialized as strings (e.g., `100ms`, `2s`, `1h10m`) using the [`duration_string`](https://docs.rs/duration-string/latest/duration_string/) crate. These implementation details, however, should not be relied upon by the user.
+
+### `uuid`
+
+This feature introduces conversions between Cassandra's `CqlUuid` and the `Uuid` from the [`uuid`](https://docs.rs/uuid/latest/uuid/) crate, simplifying the handling of UUID values.
+
+## Examples
+
+### Create a session via `SessionConfigBuilder`
+
+The `SessionConfigBuilder` facilitates creating connections to Cassandra clusters with custom settings:
+
+```rust
+use anyhow::Result;
+use cassander::{SessionConfigBuilder, Authenticator};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let _session = SessionConfigBuilder::new()
+        .contact_point("cassandra.testserver.com")
+        .authenticator(Authenticator::plain_text("test_user", "password"))
+        .keyspace("test_keyspace")
+        .page_size(5000)
+        .build()
+        .connect()
+        .await?;
+
+    Ok(())
+}
+```
+
+### Deserializing `SessionConfig` from a TOML file
 
 To utilize this feature, update your application's `Cargo.toml` to include necessary dependencies:
 
@@ -78,35 +109,4 @@ Example configuration file (`app.toml`):
 [cassandra.authenticator.plain_text]
   username            = "test_user"
   password            = "secret"
-```
-
-Duration values in configuration files are serialized as strings (e.g., `100ms`, `2s`, `1h10m`) using the [`duration_string`](https://docs.rs/duration-string/latest/duration_string/) crate. These implementation details, however, should not be relied upon by the user.
-
-### `uuid`
-
-This feature introduces conversions between Cassandra's `CqlUuid` and the `Uuid` from the [`uuid`](https://docs.rs/uuid/latest/uuid/) crate, simplifying the handling of UUID values.
-
-## Examples
-
-### Create a session via `SessionConfigBuilder`
-
-The `SessionConfigBuilder` facilitates creating connections to Cassandra clusters with custom settings:
-
-```rust
-use anyhow::Result;
-use cassander::{SessionConfigBuilder, Authenticator};
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    let _session = SessionConfigBuilder::new()
-        .contact_point("cassandra.testserver.com")
-        .authenticator(Authenticator::plain_text("test_user", "password"))
-        .keyspace("test_keyspace")
-        .page_size(5000)
-        .build()
-        .connect()
-        .await?;
-
-    Ok(())
-}
 ```
