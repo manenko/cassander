@@ -27,3 +27,10 @@ impl From<CqlBoolean> for bool {
         value.as_bool()
     }
 }
+
+impl AsRef<bool> for CqlBoolean {
+    /// Returns the inner boolean value as a reference.
+    fn as_ref(&self) -> &bool {
+        &self.0
+    }
+}
