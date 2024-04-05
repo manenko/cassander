@@ -2,8 +2,7 @@
 
 Cassander provides Rust developers with a wrapper for the DataStax C/C++ Driver, enabling interaction with Apache Cassandra and DataStax products. Currently under development, users should anticipate possible changes and some bugs.
 
-The library was tested agains C/C++ driver version 2.17.1, but should work with older versions too.
-
+The library was tested against C/C++ driver version [`2.17.1`](https://github.com/datastax/cpp-driver/tree/2.17.1), but should work with older versions too.
 
 To get started, include Cassander in your `Cargo.toml` as follows:
 
