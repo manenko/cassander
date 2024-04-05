@@ -13,7 +13,7 @@ cassander = "0.1"
 
 ## Prerequisites
 
-The make sure you have the DataStax C/C++ Driver [installed](https://docs.datastax.com/en/developer/cpp-driver/2.17/topics/installation/) and available for dynamic loading.
+Make sure you have the DataStax C/C++ Driver [installed](https://docs.datastax.com/en/developer/cpp-driver/2.17/topics/installation/) and available for dynamic loading.
 
 ## Optional Features
 
@@ -28,6 +28,10 @@ Duration values are serialized as strings (e.g., `100ms`, `2s`, `1h10m`) using t
 ### `uuid`
 
 This feature introduces conversions between Cassandra's `CqlUuid` and the `Uuid` from the [`uuid`](https://docs.rs/uuid/latest/uuid/) crate, simplifying the handling of UUID values.
+
+### `chrono`
+
+The feature allows for conversions between CQL date/time types and corresponding types from the [`chrono`](https://docs.rs/chrono/latest/chrono/) crate.
 
 ## Examples
 
