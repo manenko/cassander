@@ -17,7 +17,7 @@ impl NonAsciiStringError {
     }
 }
 
-/// A Cassandra Query Language (CQL) ASCII string.
+/// A CQL ASCII string.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct CqlAscii(String);
 
@@ -30,11 +30,11 @@ impl CqlAscii {
         S: Into<String>,
     {
         let value = value.into();
-        if !value.is_ascii() {
-            return Err(NonAsciiStringError::new(value));
+        if value.is_ascii() {
+            Ok(Self(value))
+        } else {
+            Err(NonAsciiStringError::new(value))
         }
-
-        Ok(Self(value))
     }
 
     /// Returns the inner string.
