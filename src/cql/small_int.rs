@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `smallint` type.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct CqlSmallInt(i16);
@@ -32,5 +38,11 @@ impl AsRef<i16> for CqlSmallInt {
     /// Returns the inner [`i16`] value as a reference.
     fn as_ref(&self) -> &i16 {
         &self.0
+    }
+}
+
+impl Display for CqlSmallInt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

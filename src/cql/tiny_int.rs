@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `tinyint` type.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct CqlTinyInt(i8);
@@ -32,5 +38,11 @@ impl AsRef<i8> for CqlTinyInt {
     /// Returns the inner [`i8`] value as a reference.
     fn as_ref(&self) -> &i8 {
         &self.0
+    }
+}
+
+impl Display for CqlTinyInt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `float` type.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct CqlFloat(f32);
@@ -32,5 +38,11 @@ impl AsRef<f32> for CqlFloat {
     /// Returns the inner [`f32`] value as a reference.
     fn as_ref(&self) -> &f32 {
         &self.0
+    }
+}
+
+impl Display for CqlFloat {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

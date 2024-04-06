@@ -10,8 +10,11 @@ pub struct CqlText(String);
 
 impl CqlText {
     /// Creates a new [`CqlText`] from the given [`String`] value.
-    pub fn new(value: String) -> Self {
-        Self(value)
+    pub fn new<S>(value: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self(value.into())
     }
 
     /// Returns the inner [`String`] value as a slice.
@@ -35,7 +38,14 @@ impl From<String> for CqlText {
 impl From<&str> for CqlText {
     /// Converts the given [`&str`] into a [`CqlText`].
     fn from(value: &str) -> Self {
-        Self::new(value.to_string())
+        Self::new(value)
+    }
+}
+
+impl From<&String> for CqlText {
+    /// Converts the given [`&String`] into a [`CqlText`].
+    fn from(value: &String) -> Self {
+        Self::new(value)
     }
 }
 

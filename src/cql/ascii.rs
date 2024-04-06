@@ -1,3 +1,8 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
 use std::str::FromStr;
 
 use thiserror::Error;
@@ -99,5 +104,12 @@ impl From<CqlAscii> for String {
     /// Converts a `CqlAscii` into a string.
     fn from(value: CqlAscii) -> Self {
         value.0
+    }
+}
+
+impl Display for CqlAscii {
+    /// Formats the `CqlAscii` as a string.
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

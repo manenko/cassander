@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `bigint` type.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct CqlBigInt(i64);
@@ -32,5 +38,11 @@ impl AsRef<i64> for CqlBigInt {
     /// Returns the inner [`i64`] value as a reference.
     fn as_ref(&self) -> &i64 {
         &self.0
+    }
+}
+
+impl Display for CqlBigInt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

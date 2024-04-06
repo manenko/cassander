@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `int` type.
 #[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct CqlInt(i32);
@@ -32,5 +38,11 @@ impl AsRef<i32> for CqlInt {
     /// Returns the inner [`i32`] value as a reference.
     fn as_ref(&self) -> &i32 {
         &self.0
+    }
+}
+
+impl Display for CqlInt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

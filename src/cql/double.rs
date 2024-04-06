@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `double` type.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct CqlDouble(f64);
@@ -32,5 +38,11 @@ impl AsRef<f64> for CqlDouble {
     /// Returns the inner [`f64`] value as a reference.
     fn as_ref(&self) -> &f64 {
         &self.0
+    }
+}
+
+impl Display for CqlDouble {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `boolean` type.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct CqlBoolean(bool);
@@ -32,5 +38,11 @@ impl AsRef<bool> for CqlBoolean {
     /// Returns the inner boolean value as a reference.
     fn as_ref(&self) -> &bool {
         &self.0
+    }
+}
+
+impl Display for CqlBoolean {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

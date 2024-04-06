@@ -1,3 +1,9 @@
+use core::fmt;
+use std::fmt::{
+    Display,
+    Formatter,
+};
+
 /// A CQL `counter` type.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct CqlCounter(i64);
@@ -25,5 +31,11 @@ impl From<CqlCounter> for i64 {
     /// Converts the given [`CqlCounter`] into an [`i64`].
     fn from(value: CqlCounter) -> Self {
         value.as_i64()
+    }
+}
+
+impl Display for CqlCounter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
