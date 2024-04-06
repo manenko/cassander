@@ -14,8 +14,7 @@ use num_bigint::BigInt;
 /// This type is not much useful on its own if you need to perform operations
 /// over the `varint` values. However, when `num-bigint` feature is enabled, the
 /// crate implements conversions between the `CqlVarInt` and the `BigInt` type
-/// from the
-/// [`num-bigint`](https://docs.rs/num-bigint/latest/num_bigint/struct.BigInt.html)
+/// from the [`num-bigint`](https://docs.rs/num-bigint/latest/num_bigint/)
 /// crate.
 #[derive(Debug, Clone, Eq)]
 pub struct CqlVarInt(Vec<u8>);
