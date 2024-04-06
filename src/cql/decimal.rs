@@ -1,3 +1,4 @@
+#[cfg(feature = "bigdecimal")]
 use bigdecimal::BigDecimal;
 use thiserror::Error;
 
@@ -76,6 +77,12 @@ impl From<CqlDecimal> for BigDecimal {
     }
 }
 
+/// An error indicating that the given `BigDecimal` is unrepresentable as
+/// [`CqlDecimal`] because its decimal exponent overflows.
+///
+/// The Cassandra decimal type has a 32-bit signed integer exponent, while the
+/// `BigDecimal` type from the `bigdecimal` crate has a 64-bit signed integer
+/// exponent.
 #[cfg(feature = "bigdecimal")]
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 #[error(
@@ -88,7 +95,7 @@ pub struct DecimalExponentOverflowError(BigDecimal);
 impl TryFrom<BigDecimal> for CqlDecimal {
     type Error = DecimalExponentOverflowError;
 
-    /// Converts the given [`BigDecimal`] into a [`CqlDecimal`].
+    /// Converts the given `BigDecimal` into a [`CqlDecimal`].
     fn try_from(value: BigDecimal) -> Result<Self, Self::Error> {
         let (magnitude, exponent) = value.as_bigint_and_exponent();
 

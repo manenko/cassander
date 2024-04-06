@@ -31,7 +31,15 @@ This feature introduces conversions between Cassandra's `CqlUuid` and the `Uuid`
 
 ### `chrono`
 
-The feature allows for conversions between CQL date/time types and corresponding types from the [`chrono`](https://docs.rs/chrono/latest/chrono/) crate.
+The feature introduces conversions between Cassandra's date/time types and corresponding types from the [`chrono`](https://docs.rs/chrono/latest/chrono/) crate.
+
+### `num-bigint`
+
+The feature introduces conversions between Cassandra's `CqlVarInt` and the `[BigInt]` from the [`num-bigint`](https://docs.rs/num-bigint/latest/num_bigint/) crate.
+
+### `bigdecimal`
+
+The feature introduces conversions between Cassandra's `CqlDecimal` and the `[BigDecimal]` from the [`bigdecimal`](https://docs.rs/bigdecimal/latest/bigdecimal/) crate.
 
 ## Examples
 

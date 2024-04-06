@@ -1,4 +1,5 @@
-//! `tracing` integration for the Cassandra driver.
+//! The [`tracing`](https://docs.rs/tracing/latest/tracing/index.html) crate
+//! integration for the Cassandra driver.
 //!
 //! This module provides a way to integrate the Cassandra driver logging with
 //! the [`tracing`](https://docs.rs/tracing/latest/tracing/index.html) crate.
