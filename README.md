@@ -35,11 +35,11 @@ The feature introduces conversions between Cassandra's date/time types and corre
 
 ### `num-bigint`
 
-The feature introduces conversions between Cassandra's `CqlVarInt` and the `[BigInt]` from the [`num-bigint`](https://docs.rs/num-bigint/latest/num_bigint/) crate.
+The feature introduces conversions between Cassandra's `CqlVarInt` and the `BigInt` from the [`num-bigint`](https://docs.rs/num-bigint/latest/num_bigint/) crate.
 
 ### `bigdecimal`
 
-The feature introduces conversions between Cassandra's `CqlDecimal` and the `[BigDecimal]` from the [`bigdecimal`](https://docs.rs/bigdecimal/latest/bigdecimal/) crate.
+The feature introduces conversions between Cassandra's `CqlDecimal` and the `BigDecimal` from the [`bigdecimal`](https://docs.rs/bigdecimal/latest/bigdecimal/) crate.
 
 ## Examples
 
