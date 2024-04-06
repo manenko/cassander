@@ -6,30 +6,11 @@
 //! # Example
 //!
 //! ```rust
-//! use cassander::{
-//!     logging,
-//!     Cluster,
-//! };
+//! use cassander::logging;
 //! use tracing::Level;
 //!
-//! #[tokio::main]
-//! async fn main() {
-//!     let max_level = Level::TRACE;
-//!
-//!     tracing_subscriber::fmt::fmt()
-//!         .with_ansi(true)
-//!         .with_max_level(max_level)
-//!         .init();
-//!
-//!     logging::set_log_level(Some(max_level));
-//!     logging::use_tracing_logger();
-//!
-//!     let mut cluster = Cluster::default();
-//!     cluster.set_contact_points("127.0.0.1").uwrap();
-//!     let _session = cluster.connect_keyspace("kyiv").await.unwrap();
-//!
-//!     println!("Connected to the cluster");
-//! }
+//! logging::set_log_level(Some(Level::TRACE));
+//! logging::use_tracing_logger();
 //! ```
 
 use std::ffi::{
