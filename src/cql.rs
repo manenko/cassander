@@ -1,6 +1,7 @@
 //! CQL types and utilities.
 
 mod ascii;
+mod big_int;
 mod blob;
 mod boolean;
 mod counter;
@@ -17,6 +18,7 @@ mod uuid_gen;
 mod varint;
 
 pub use ascii::*;
+pub use big_int::*;
 pub use blob::*;
 pub use boolean::*;
 pub use counter::*;
