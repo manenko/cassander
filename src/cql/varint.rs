@@ -63,7 +63,7 @@ impl CqlVarInt {
 
         match first_non_zero {
             // If there are no non-zero bytes, return a slice with a single zero
-            // byte. This is the case when the value is empty.
+            // byte. This is also the case when the value is empty.
             None => &[0],
             // If there no leading zeros, return the whole slice.
             Some(0) => &self.0,
