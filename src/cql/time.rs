@@ -75,7 +75,10 @@ impl TryFrom<NaiveTime> for CqlTime {
 /// a [`NaiveTime`] because it is out of range..
 #[cfg(feature = "chrono")]
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
-#[error("the CqlTime {} is out of range for chrono::NaiveTime type", .0.as_i64())]
+#[error("the CqlTime {} is out of range for \
+         the chrono::NaiveTime type",
+        .0.as_i64()
+)]
 pub struct NaiveTimeOverflowError(CqlTime);
 
 impl TryFrom<CqlTime> for NaiveTime {
