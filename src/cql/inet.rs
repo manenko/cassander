@@ -86,6 +86,13 @@ impl From<CqlInet> for IpAddr {
     }
 }
 
+impl From<CqlInet> for struct_CassInet_ {
+    /// Converts the given CQL inet object to the driver object.
+    fn from(value: CqlInet) -> Self {
+        value.0
+    }
+}
+
 impl PartialEq for CqlInet {
     /// Compares two CQL inet objects for equality.
     fn eq(&self, other: &Self) -> bool {

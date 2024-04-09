@@ -20,6 +20,7 @@ mod timestamp;
 mod tiny_int;
 mod uuid;
 mod uuid_gen;
+mod value_type;
 mod varint;
 
 pub use ascii::*;
@@ -42,4 +43,5 @@ pub use timestamp::*;
 pub use tiny_int::*;
 pub use uuid::*;
 pub use uuid_gen::*;
+pub use value_type::*;
 pub use varint::*;
