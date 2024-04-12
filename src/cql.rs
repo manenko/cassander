@@ -3,6 +3,7 @@
 mod ascii;
 mod collection;
 mod counter;
+mod data_type;
 mod date;
 mod decimal;
 mod duration;
@@ -19,6 +20,7 @@ mod varint;
 pub use ascii::*;
 pub use collection::*;
 pub use counter::*;
+pub use data_type::*;
 pub use date::*;
 pub use decimal::*;
 pub use duration::*;

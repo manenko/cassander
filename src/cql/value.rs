@@ -18,6 +18,7 @@ pub enum CqlValue {
     Blob(Vec<u8>),
     Boolean(bool),
     Counter(CqlCounter),
+    // Custom,
     Date(CqlDate),
     Decimal(CqlDecimal),
     Double(f64),
