@@ -180,7 +180,7 @@ impl CqlDataType {
             unsafe { cass_data_type_sub_data_type(self.inner(), index) };
 
         // The driver returns `NULL` if the given index is out of range or the
-        // data type does not support sub-types. We already checked tese cases
+        // data type does not support sub-types. We already checked these cases
         // but let's have an additional check in case of changes in the driver
         // behavior in the future.
         assert!(!data_type.is_null());
@@ -210,12 +210,15 @@ impl CqlDataType {
     }
 }
 
+/// Returns `true` if the given data type supports sub-types.
 fn supports_sub_types(value_type: CqlValueType) -> bool {
     use CqlValueType::*;
 
     matches!(value_type, Udt | Tuple | List | Map | Set)
 }
 
+/// Returns an error indicating that the given data type does not support
+/// sub-types.
 fn sub_types_are_not_supported(value_type: CqlValueType) -> DriverError {
     DriverError::with_message(
         DriverErrorKind::LibBadParams,
@@ -224,6 +227,7 @@ fn sub_types_are_not_supported(value_type: CqlValueType) -> DriverError {
 }
 
 impl Drop for CqlDataType {
+    /// Frees the memory allocated for the data type object.
     fn drop(&mut self) {
         if self.owned {
             unsafe { cass_data_type_free(self.inner()) }
@@ -239,6 +243,7 @@ pub struct CqlDataTypeRef<'a, Parent> {
 }
 
 impl<'a, Parent> CqlDataTypeRef<'a, Parent> {
+    /// Creates a new reference to the given data type.
     pub(crate) fn new(data_type: *const struct_CassDataType_) -> Self {
         Self {
             inner:     CqlDataType::new_borrowed(data_type),
@@ -250,6 +255,7 @@ impl<'a, Parent> CqlDataTypeRef<'a, Parent> {
 impl<'a, Parent> Deref for CqlDataTypeRef<'a, Parent> {
     type Target = CqlDataType;
 
+    /// Returns a reference to the inner data type object.
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
