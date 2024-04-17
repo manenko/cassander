@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-use crate::cql::CqlValueType;
+use crate::cql::ValueType;
 use crate::ffi::{
     cass_data_type_class_name,
     cass_data_type_free,
@@ -15,6 +15,7 @@ use crate::ffi::{
     cass_data_type_set_keyspace_n,
     cass_data_type_set_type_name_n,
     cass_data_type_sub_data_type,
+    cass_data_type_sub_data_type_by_name_n,
     cass_data_type_sub_type_count,
     cass_data_type_type,
     cass_data_type_type_name,
@@ -28,12 +29,13 @@ use crate::{
     DriverErrorKind,
 };
 
-pub struct CqlDataType {
+/// A data type used to describe a value, collection or user-defined type.
+pub struct DataType {
     inner: *mut struct_CassDataType_,
     owned: bool,
 }
 
-impl CqlDataType {
+impl DataType {
     /// Creates a new owned wrapper from the given driver object.
     pub(crate) fn new_owned(data_type: *mut struct_CassDataType_) -> Self {
         Self {
@@ -50,8 +52,8 @@ impl CqlDataType {
         }
     }
 
-    /// Creates a new data type with value type.
-    pub fn new(value_type: CqlValueType) -> Self {
+    /// Creates a new data type with the given value type.
+    pub fn new(value_type: ValueType) -> Self {
         let value_type = value_type.into();
         let data_type = unsafe { cass_data_type_new(value_type) };
 
@@ -59,7 +61,11 @@ impl CqlDataType {
     }
 
     /// Creates a new data type from an existing one.
-    pub fn from_existing(other: &CqlDataType) -> Self {
+    pub fn from_existing<D>(other: D) -> Self
+    where
+        D: AsRef<DataType>,
+    {
+        let other = other.as_ref();
         let data_type =
             unsafe { cass_data_type_new_from_existing(other.inner()) };
 
@@ -82,7 +88,7 @@ impl CqlDataType {
     }
 
     /// Returns the value type of the data type.
-    pub fn value_type(&self) -> CqlValueType {
+    pub fn value_type(&self) -> ValueType {
         unsafe { cass_data_type_type(self.inner()) }.into()
     }
 
@@ -138,14 +144,14 @@ impl CqlDataType {
 
     /// Returns the name of the custom data type.
     ///
-    /// Returns an error if this data type is not [`CqlValueType::Custom`].
+    /// Returns an error if this data type is not [`ValueType::Custom`].
     pub fn class_name(&self) -> Result<&str, DriverError> {
         get_str(|p, l| unsafe { cass_data_type_class_name(self.inner(), p, l) })
     }
 
     /// Sets the name of the custom data type.
     ///
-    /// Returns an error if this data type is not [`CqlValueType::Custom`].
+    /// Returns an error if this data type is not [`ValueType::Custom`].
     pub fn set_class_name<S>(&mut self, name: S) -> Result<(), DriverError>
     where
         S: AsRef<str>,
@@ -170,10 +176,10 @@ impl CqlDataType {
     ///
     /// Returns an error if the index is out of range, of this data type is not
     /// one of the: UDT, tuple, collection.
-    pub fn sub_data_type(
+    pub fn sub_data_type_by_index(
         &self,
         index: usize,
-    ) -> Result<CqlDataTypeRef<'_, Self>, DriverError> {
+    ) -> Result<DataTypeRef<'_, Self>, DriverError> {
         self.ensure_sub_type_index_in_range(index)?;
 
         let data_type =
@@ -185,7 +191,43 @@ impl CqlDataType {
         // behavior in the future.
         assert!(!data_type.is_null());
 
-        Ok(CqlDataTypeRef::new(data_type))
+        Ok(DataTypeRef::new(data_type))
+    }
+
+    /// Returns an immutable reference to a sub-type for a field of this UDT.
+    ///
+    /// Returns an error if this is not a UDT or if it has no field with such
+    /// name.
+    pub fn sub_data_type_by_name<S>(
+        &self,
+        name: S,
+    ) -> Result<DataTypeRef<'_, Self>, DriverError>
+    where
+        S: AsRef<str>,
+    {
+        self.ensure_this_is_udt()?;
+
+        let name = name.as_ref();
+        let p = name.as_ptr() as _;
+        let l = name.len();
+
+        let data_type = unsafe {
+            cass_data_type_sub_data_type_by_name_n(self.inner(), p, l)
+        };
+
+        // The driver returns `NULL` when there is no field with the given name
+        // found for this UDT.
+        if data_type.is_null() {
+            Err(DriverError::with_message(
+                DriverErrorKind::LibBadParams,
+                format!(
+                    "there is no field '{}' in this user-defined type",
+                    name
+                ),
+            ))
+        } else {
+            Ok(DataTypeRef::new(data_type))
+        }
     }
 
     fn ensure_sub_types_supported(&self) -> Result<(), DriverError> {
@@ -208,25 +250,39 @@ impl CqlDataType {
             Ok(())
         }
     }
+
+    fn ensure_this_is_udt(&self) -> Result<(), DriverError> {
+        let value_type = self.value_type();
+        match value_type {
+            ValueType::Udt => Err(DriverError::with_message(
+                DriverErrorKind::LibBadParams,
+                format!(
+                    "expected a user-defined type but got {:?}",
+                    value_type
+                ),
+            )),
+            _ => Ok(()),
+        }
+    }
 }
 
 /// Returns `true` if the given data type supports sub-types.
-fn supports_sub_types(value_type: CqlValueType) -> bool {
-    use CqlValueType::*;
+fn supports_sub_types(value_type: ValueType) -> bool {
+    use ValueType::*;
 
     matches!(value_type, Udt | Tuple | List | Map | Set)
 }
 
 /// Returns an error indicating that the given data type does not support
 /// sub-types.
-fn sub_types_are_not_supported(value_type: CqlValueType) -> DriverError {
+fn sub_types_are_not_supported(value_type: ValueType) -> DriverError {
     DriverError::with_message(
         DriverErrorKind::LibBadParams,
         format!("the {:?} data type does not support sub types", value_type),
     )
 }
 
-impl Drop for CqlDataType {
+impl Drop for DataType {
     /// Frees the memory allocated for the data type object.
     fn drop(&mut self) {
         if self.owned {
@@ -235,28 +291,35 @@ impl Drop for CqlDataType {
     }
 }
 
-/// An immutable reference to a [`CqlDataType`].
+/// An immutable reference to a [`DataType`].
 #[repr(transparent)]
-pub struct CqlDataTypeRef<'a, Parent> {
-    inner:     CqlDataType,
+pub struct DataTypeRef<'a, Parent> {
+    inner:     DataType,
     _lifetime: PhantomData<&'a Parent>,
 }
 
-impl<'a, Parent> CqlDataTypeRef<'a, Parent> {
+impl<'a, Parent> DataTypeRef<'a, Parent> {
     /// Creates a new reference to the given data type.
     pub(crate) fn new(data_type: *const struct_CassDataType_) -> Self {
         Self {
-            inner:     CqlDataType::new_borrowed(data_type),
+            inner:     DataType::new_borrowed(data_type),
             _lifetime: PhantomData,
         }
     }
 }
 
-impl<'a, Parent> Deref for CqlDataTypeRef<'a, Parent> {
-    type Target = CqlDataType;
+impl<'a, Parent> Deref for DataTypeRef<'a, Parent> {
+    type Target = DataType;
 
     /// Returns a reference to the inner data type object.
     fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl AsRef<DataType> for DataTypeRef<'_, DataType> {
+    /// Returns a reference to the inner data type object.
+    fn as_ref(&self) -> &DataType {
         &self.inner
     }
 }

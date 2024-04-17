@@ -25,7 +25,6 @@ use crate::ffi::{
     enum_CassValueType__CASS_VALUE_TYPE_TINY_INT  as TINY_INT,
     enum_CassValueType__CASS_VALUE_TYPE_TUPLE     as TUPLE,
     enum_CassValueType__CASS_VALUE_TYPE_UDT       as UDT,
-    enum_CassValueType__CASS_VALUE_TYPE_UNKNOWN   as UNKNOWN,
     enum_CassValueType__CASS_VALUE_TYPE_UUID      as UUID,
     enum_CassValueType__CASS_VALUE_TYPE_VARCHAR   as VARCHAR,
     enum_CassValueType__CASS_VALUE_TYPE_VARINT    as VARINT,
@@ -33,7 +32,7 @@ use crate::ffi::{
 
 /// A type of a CQL value.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CqlValueType {
+pub enum ValueType {
     Ascii,
     BigInt,
     Blob,
@@ -58,16 +57,62 @@ pub enum CqlValueType {
     TinyInt,
     Tuple,
     Udt,
-    Unknown(u32),
     Uuid,
     VarChar,
     VarInt,
 }
 
-impl From<enum_CassValueType_> for CqlValueType {
+impl ValueType {
+    /// Returns the kind of the value type (native, collection, UDT, etc.).
+    #[rustfmt::skip]
+    pub fn kind(self) -> ValueKind {
+        use ValueType::*;
+
+        match self {
+            |  Ascii
+            |  BigInt
+            |  Blob
+            |  Boolean
+            |  Counter
+            |  Date
+            |  Decimal
+            |  Double
+            |  Duration
+            |  Float
+            |  Inet
+            |  Int
+            |  SmallInt
+            |  Text
+            |  Time
+            |  TimeUuid
+            |  Timestamp
+            |  TinyInt
+            |  Uuid
+            |  VarChar
+            |  VarInt
+            => ValueKind::Native,
+
+            |  Custom
+            => ValueKind::Custom,
+
+            |  List
+            |  Map
+            |  Set
+            => ValueKind::Collection,
+
+            |  Tuple
+            => ValueKind::Tuple,
+
+            |  Udt
+            => ValueKind::UserDefined,
+        }
+    }
+}
+
+impl From<enum_CassValueType_> for ValueType {
     #[rustfmt::skip]
     fn from(value_type: enum_CassValueType_) -> Self {
-        use CqlValueType::*;
+        use ValueType::*;
 
         match value_type {
             ASCII       => Ascii,
@@ -97,15 +142,15 @@ impl From<enum_CassValueType_> for CqlValueType {
             UUID        => Uuid,
             VARCHAR     => VarChar,
             VARINT      => VarInt,
-            unknown     => Unknown(unknown),
+            u           => unreachable!("unknown CassValueType: {}", u)
         }
     }
 }
 
-impl From<CqlValueType> for enum_CassValueType_ {
+impl From<ValueType> for enum_CassValueType_ {
     #[rustfmt::skip]
-    fn from(value_type: CqlValueType) -> Self {
-        use CqlValueType::*;
+    fn from(value_type: ValueType) -> Self {
+        use ValueType::*;
 
         match value_type {
             Ascii            => ASCII,
@@ -132,10 +177,24 @@ impl From<CqlValueType> for enum_CassValueType_ {
             TinyInt          => TINY_INT,
             Tuple            => TUPLE,
             Udt              => UDT,
-            Unknown(_)       => UNKNOWN,
             Uuid             => UUID,
             VarChar          => VARCHAR,
             VarInt           => VARINT,
         }
     }
+}
+
+/// A kind of a CQL value type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValueKind {
+    /// One of the CQL native types.
+    Native,
+    /// A custom type.
+    Custom,
+    /// A CQL collection type.
+    Collection,
+    /// A CQL tuple.
+    Tuple,
+    /// A CQL user-defined type.
+    UserDefined,
 }

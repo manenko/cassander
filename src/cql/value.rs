@@ -8,8 +8,8 @@ use crate::cql::{
     CqlTime,
     CqlTimestamp,
     CqlUuid,
-    CqlValueType,
     CqlVarInt,
+    ValueType,
 };
 
 pub enum CqlValue {
@@ -184,31 +184,31 @@ impl CqlValue {
         }
     }
 
-    /// Returns the [`CqlValueType`] of this value.
+    /// Returns the [`ValueType`] of this value.
     #[rustfmt::skip]
-    pub fn value_type(&self) -> CqlValueType {
+    pub fn value_type(&self) -> ValueType {
         match self {
-            CqlValue::Ascii(_)     => CqlValueType::Ascii,
-            CqlValue::BigInt(_)    => CqlValueType::BigInt,
-            CqlValue::Blob(_)      => CqlValueType::Blob,
-            CqlValue::Boolean(_)   => CqlValueType::Boolean,
-            CqlValue::Counter(_)   => CqlValueType::Counter,
-            CqlValue::Date(_)      => CqlValueType::Date,
-            CqlValue::Decimal(_)   => CqlValueType::Decimal,
-            CqlValue::Double(_)    => CqlValueType::Double,
-            CqlValue::Duration(_)  => CqlValueType::Duration,
-            CqlValue::Float(_)     => CqlValueType::Float,
-            CqlValue::Inet(_)      => CqlValueType::Inet,
-            CqlValue::Int(_)       => CqlValueType::Int,
-            CqlValue::SmallInt(_)  => CqlValueType::SmallInt,
-            CqlValue::Text(_)      => CqlValueType::Text,
-            CqlValue::Time(_)      => CqlValueType::Time,
-            CqlValue::TimeUuid(_)  => CqlValueType::TimeUuid,
-            CqlValue::Timestamp(_) => CqlValueType::Timestamp,
-            CqlValue::TinyInt(_)   => CqlValueType::TinyInt,
-            CqlValue::Uuid(_)      => CqlValueType::Uuid,
-            CqlValue::VarChar(_)   => CqlValueType::VarChar,
-            CqlValue::VarInt(_)    => CqlValueType::VarInt,
+            CqlValue::Ascii(_)     => ValueType::Ascii,
+            CqlValue::BigInt(_)    => ValueType::BigInt,
+            CqlValue::Blob(_)      => ValueType::Blob,
+            CqlValue::Boolean(_)   => ValueType::Boolean,
+            CqlValue::Counter(_)   => ValueType::Counter,
+            CqlValue::Date(_)      => ValueType::Date,
+            CqlValue::Decimal(_)   => ValueType::Decimal,
+            CqlValue::Double(_)    => ValueType::Double,
+            CqlValue::Duration(_)  => ValueType::Duration,
+            CqlValue::Float(_)     => ValueType::Float,
+            CqlValue::Inet(_)      => ValueType::Inet,
+            CqlValue::Int(_)       => ValueType::Int,
+            CqlValue::SmallInt(_)  => ValueType::SmallInt,
+            CqlValue::Text(_)      => ValueType::Text,
+            CqlValue::Time(_)      => ValueType::Time,
+            CqlValue::TimeUuid(_)  => ValueType::TimeUuid,
+            CqlValue::Timestamp(_) => ValueType::Timestamp,
+            CqlValue::TinyInt(_)   => ValueType::TinyInt,
+            CqlValue::Uuid(_)      => ValueType::Uuid,
+            CqlValue::VarChar(_)   => ValueType::VarChar,
+            CqlValue::VarInt(_)    => ValueType::VarInt,
         }
     }
 }
