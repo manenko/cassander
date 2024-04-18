@@ -22,4 +22,4 @@ reorder_impl_items           = true
 group_imports                = "StdExternalCrate"
 struct_field_align_threshold = 40
 struct_lit_single_line       = false
-wrap_comments                = true
+wrap_comments                = false
