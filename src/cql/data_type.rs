@@ -3,6 +3,8 @@ use std::ops::Deref;
 
 use crate::cql::ValueType;
 use crate::ffi::{
+    cass_data_type_add_sub_type,
+    cass_data_type_add_sub_type_by_name_n,
     cass_data_type_class_name,
     cass_data_type_free,
     cass_data_type_is_frozen,
@@ -17,6 +19,7 @@ use crate::ffi::{
     cass_data_type_sub_data_type,
     cass_data_type_sub_data_type_by_name_n,
     cass_data_type_sub_type_count,
+    cass_data_type_sub_type_name,
     cass_data_type_type,
     cass_data_type_type_name,
     enum_cass_bool_t_cass_false as CASS_FALSE,
@@ -25,6 +28,7 @@ use crate::ffi::{
     struct_CassDataType_,
 };
 use crate::{
+    to_result,
     DriverError,
     DriverErrorKind,
 };
@@ -228,6 +232,66 @@ impl DataType {
         } else {
             Ok(DataTypeRef::new(data_type))
         }
+    }
+
+    /// Gets the sub-type name of a UDT (user defined type) at the specified
+    /// index.
+    ///
+    /// Returns an error if this is not a UDT or if the index is out of range.
+    pub fn sub_data_type_name(
+        &self,
+        index: usize,
+    ) -> Result<&str, DriverError> {
+        self.ensure_this_is_udt()?;
+        self.ensure_sub_type_index_in_range(index)?;
+
+        get_str(|p, l| unsafe {
+            cass_data_type_sub_type_name(self.inner(), index, p, l)
+        })
+    }
+
+    /// Adds a sub-type to a tuple or collection.
+    ///
+    /// Returns an error if this data type is not a tuple or collection.
+    pub fn add_sub_type<D>(&mut self, date_type: D) -> Result<(), DriverError>
+    where
+        D: AsRef<DataType>,
+    {
+        self.ensure_sub_types_supported()?;
+
+        let data_type = date_type.as_ref();
+        let error = unsafe {
+            cass_data_type_add_sub_type(self.inner(), data_type.inner())
+        };
+
+        to_result(error)
+    }
+
+    /// Adds a sub-type to a UDT by name.
+    ///
+    /// Returns an error if this is not a UDT.
+    pub fn add_sub_type_by_name<S, D>(
+        &mut self,
+        name: S,
+        data_type: D,
+    ) -> Result<(), DriverError>
+    where
+        S: AsRef<str>,
+        D: AsRef<DataType>,
+    {
+        self.ensure_this_is_udt()?;
+
+        let name = name.as_ref();
+        let data_type = data_type.as_ref();
+
+        set_c_str(name, |p, l| unsafe {
+            cass_data_type_add_sub_type_by_name_n(
+                self.inner(),
+                p,
+                l,
+                data_type.inner(),
+            )
+        })
     }
 
     fn ensure_sub_types_supported(&self) -> Result<(), DriverError> {
