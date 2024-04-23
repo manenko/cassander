@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  cassandra-protocol3:
+    image: cassandra:2.2.19
+    container_name: cassander-test-v3
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=CassanderTestV3
+    volumes:
+      - cassander-test-data-v3:/var/lib/cassandra
+
+  cassandra-protocol4:
+    image: cassandra:3.11.11
+    container_name: cassander-test-v4
+    ports:
+      - "9142:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=CassanderTestV4
+    volumes:
+      - cassander-test-data-v4:/var/lib/cassandra
+
+  cassandra-protocol5:
+    image: cassandra:4.0.5
+    container_name: cassander-test-v5
+    ports:
+      - "9242:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=CassanderTestV5
+    volumes:
+      - cassander-test-data-v5:/var/lib/cassandra
+
+volumes:
+  cassander-test-data-v3:
+  cassander-test-data-v4:
+  cassander-test-data-v5:
+
