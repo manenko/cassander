@@ -1,38 +1,35 @@
-version: '3.8'
-
 services:
-  cassandra-protocol3:
+  cassandra_2x:
     image: cassandra:2.2.19
-    container_name: cassander-test-v3
+    container_name: native_protocol_v3
     ports:
       - "9042:9042"
     environment:
-      - CASSANDRA_CLUSTER_NAME=CassanderTestV3
+      - CASSANDRA_CLUSTER_NAME=CassanderNativeProtocolV3
     volumes:
-      - cassander-test-data-v3:/var/lib/cassandra
+      - native_protocol_v3_data:/var/lib/cassandra
 
-  cassandra-protocol4:
+  cassandra_3x:
     image: cassandra:3.11.11
-    container_name: cassander-test-v4
+    container_name: native_protocol_v4
     ports:
       - "9142:9042"
     environment:
-      - CASSANDRA_CLUSTER_NAME=CassanderTestV4
+      - CASSANDRA_CLUSTER_NAME=CassanderNativeProtocolV4
     volumes:
-      - cassander-test-data-v4:/var/lib/cassandra
+      - native_protocol_v4_data:/var/lib/cassandra
 
-  cassandra-protocol5:
+  cassandra_4x:
     image: cassandra:4.0.5
-    container_name: cassander-test-v5
+    container_name: native_protocol_v5
     ports:
       - "9242:9042"
     environment:
-      - CASSANDRA_CLUSTER_NAME=CassanderTestV5
+      - CASSANDRA_CLUSTER_NAME=CassanderNativeProtocolV5
     volumes:
-      - cassander-test-data-v5:/var/lib/cassandra
+      - native_protocol_v5_data:/var/lib/cassandra
 
 volumes:
-  cassander-test-data-v3:
-  cassander-test-data-v4:
-  cassander-test-data-v5:
-
+  native_protocol_v3_data:
+  native_protocol_v4_data:
+  native_protocol_v5_data:
