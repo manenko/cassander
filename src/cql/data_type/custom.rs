@@ -37,10 +37,23 @@ impl CustomDataType {
         )
     }
 
+    /// Creates a new custom data type from the given `DriverDataType`.
+    pub(crate) fn from_driver(data_type: DriverDataType) -> Self {
+        assert_eq!(
+            data_type.value_type(),
+            ValueType::Custom,
+            "invalid data type"
+        );
+
+        Self(data_type)
+    }
+
+    /// Returns a reference to the wrapped `DriverDataType`.
     pub(crate) fn inner(&self) -> &DriverDataType {
         &self.0
     }
 
+    /// Returns a mutable reference to the wrapped `DriverDataType`.
     pub(crate) fn inner_mut(&mut self) -> &mut DriverDataType {
         &mut self.0
     }

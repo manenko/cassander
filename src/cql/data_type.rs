@@ -7,6 +7,8 @@ mod native;
 mod tuple;
 mod udt;
 
+use std::marker::PhantomData;
+
 pub use custom::*;
 pub use indexed::*;
 pub use map::*;
@@ -14,7 +16,15 @@ pub use native::*;
 pub use tuple::*;
 pub use udt::*;
 
+use self::driver::DriverDataTypeRef;
 use crate::cql::driver::DriverDataType;
+use crate::cql::ValueType;
+use crate::ffi::{
+    cass_data_type_free,
+    cass_data_type_new,
+    cass_data_type_new_from_existing,
+    struct_CassDataType_,
+};
 
 pub enum DataType {
     /// A custom data type.
@@ -140,40 +150,129 @@ impl DataType {
         Self::Custom(CustomDataType::new(name))
     }
 
+    #[rustfmt::skip]
     pub(crate) fn inner(&self) -> &DriverDataType {
         match self {
-            DataType::Custom(custom) => custom.inner(),
+            DataType::Custom(custom)   => custom.inner(),
             DataType::Indexed(indexed) => indexed.inner(),
-            DataType::Map(map) => map.inner(),
-            DataType::Native(native) => native.inner(),
-            DataType::Tuple(tuple) => tuple.inner(),
-            DataType::Udt(udt) => udt.inner(),
+            DataType::Map(map)         => map.inner(),
+            DataType::Native(native)   => native.inner(),
+            DataType::Tuple(tuple)     => tuple.inner(),
+            DataType::Udt(udt)         => udt.inner(),
         }
     }
 
+    #[rustfmt::skip]
     pub(crate) fn inner_mut(&mut self) -> &mut DriverDataType {
         match self {
-            DataType::Custom(custom) => custom.inner_mut(),
+            DataType::Custom(custom)   => custom.inner_mut(),
             DataType::Indexed(indexed) => indexed.inner_mut(),
-            DataType::Map(map) => map.inner_mut(),
-            DataType::Native(native) => native.inner_mut(),
-            DataType::Tuple(tuple) => tuple.inner_mut(),
-            DataType::Udt(udt) => udt.inner_mut(),
+            DataType::Map(map)         => map.inner_mut(),
+            DataType::Native(native)   => native.inner_mut(),
+            DataType::Tuple(tuple)     => tuple.inner_mut(),
+            DataType::Udt(udt)         => udt.inner_mut(),
         }
     }
 }
 
-pub struct DataTypeRef<'a>(&'a DriverDataType);
+impl From<DriverDataType> for DataType {
+    /// Creates a new `DataType` from the given `DriverDataType`.
+    #[rustfmt::skip]
+    fn from(dt: DriverDataType) -> Self {
+        use ValueType::*;
+        match dt.value_type() {
+            Custom     => Self::Custom(CustomDataType::from_driver(dt)),
+            Set | List => Self::Indexed(IndexedDataType::from_driver(dt)),
+            Map        => Self::Map(MapDataType::from_driver(dt)),
+            Tuple      => Self::Tuple(TupleDataType::from_driver(dt)),
+            Udt        => Self::Udt(UdtDataType::from_driver(dt)),
+            _          => Self::Native(NativeDataType::from_driver(dt)),
+        }
+    }
+}
+
+pub struct DataTypeRef<'a> {
+    inner:     DataType,
+    _lifetime: PhantomData<&'a DataType>,
+}
 
 impl<'a> DataTypeRef<'a> {
-    pub(crate) fn new<T>(data_type: T) -> Self
-    where
-        T: AsRef<DriverDataType>,
-    {
-        Self(data_type.as_ref())
+    pub(crate) fn new(data_type: DriverDataTypeRef<'a>) -> Self {
+        let dt = data_type.into_inner();
+        Self {
+            inner:     DataType::from(dt),
+            _lifetime: PhantomData,
+        }
     }
 
-    pub(crate) fn inner(&self) -> &DriverDataType {
-        self.0
+    pub(crate) fn inner(&self) -> &DataType {
+        &self.inner
+    }
+}
+
+/// A thin wrapper around the `CassDataType` object.
+///
+/// It is used to provide a safe interface for the `CassDataType` object freeing
+/// its resources when it is dropped.
+///
+/// The objects of this type could be owned or borrowed. If the object is owned,
+/// it will free the resources when it is dropped. If the object is borrowed, it
+/// will do nothing when it is dropped.
+pub(crate) struct CassDataType {
+    inner: *mut struct_CassDataType_,
+    owned: bool,
+}
+
+impl CassDataType {
+    /// Creates a new owned `CassDataType` object.
+    pub fn new(inner: *mut struct_CassDataType_) -> Self {
+        Self {
+            inner,
+            owned: true,
+        }
+    }
+
+    /// Creates a new borrowed `CassDataType` object.
+    pub fn borrow(inner: *const struct_CassDataType_) -> Self {
+        Self {
+            inner: inner as _,
+            owned: false,
+        }
+    }
+
+    /// Creates a new `CassDataType` object from the given `ValueType`.
+    pub fn from_value_type(value_type: ValueType) -> Self {
+        let value_type = value_type.into();
+        let data_type = unsafe { cass_data_type_new(value_type) };
+
+        Self::new(data_type)
+    }
+
+    /// Creates a new `CassDataType` object from the existing one.
+    pub fn from_existing(data_type: &CassDataType) -> Self {
+        let inner = data_type.inner();
+        let data_type = unsafe { cass_data_type_new_from_existing(inner) };
+
+        Self::new(data_type)
+    }
+
+    /// Returns the inner `CassDataType` object for read-only operations.
+    pub fn inner(&self) -> *const struct_CassDataType_ {
+        self.inner as _
+    }
+
+    /// Returns the inner `CassDataType` object for mutable operations.
+    pub fn inner_mut(&mut self) -> *mut struct_CassDataType_ {
+        self.inner
+    }
+}
+
+impl Drop for CassDataType {
+    /// Frees the resources used by the data type unless the data type is
+    /// borrowed.
+    fn drop(&mut self) {
+        if self.owned {
+            unsafe { cass_data_type_free(self.inner) }
+        }
     }
 }

@@ -81,6 +81,7 @@ impl TryFrom<NaiveTime> for CqlTime {
 )]
 pub struct NaiveTimeOverflowError(CqlTime);
 
+#[cfg(feature = "chrono")]
 impl TryFrom<CqlTime> for NaiveTime {
     type Error = NaiveTimeOverflowError;
 

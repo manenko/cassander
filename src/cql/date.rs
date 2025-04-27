@@ -2,6 +2,7 @@
 use chrono::Duration;
 #[cfg(feature = "chrono")]
 use chrono::NaiveDate;
+#[cfg(feature = "chrono")]
 use thiserror::Error;
 
 /// A CQL `date` type which represents a date without a time zone.

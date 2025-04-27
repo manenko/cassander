@@ -183,7 +183,7 @@ impl DriverDataType {
     pub fn sub_data_type_by_index(
         &self,
         index: usize,
-    ) -> Result<DriverDataTypeRef<'_, Self>, DriverError> {
+    ) -> Result<DriverDataTypeRef<'_>, DriverError> {
         self.ensure_sub_type_index_in_range(index)?;
 
         let data_type =
@@ -205,7 +205,7 @@ impl DriverDataType {
     pub fn sub_data_type_by_name<S>(
         &self,
         name: S,
-    ) -> Result<DriverDataTypeRef<'_, Self>, DriverError>
+    ) -> Result<DriverDataTypeRef<'_>, DriverError>
     where
         S: AsRef<str>,
     {
@@ -357,12 +357,12 @@ impl Drop for DriverDataType {
 
 /// An immutable reference to a [`DataType`].
 #[repr(transparent)]
-pub struct DriverDataTypeRef<'a, Parent> {
+pub struct DriverDataTypeRef<'a> {
     inner:     DriverDataType,
-    _lifetime: PhantomData<&'a Parent>,
+    _lifetime: PhantomData<&'a DriverDataType>,
 }
 
-impl<'a, Parent> DriverDataTypeRef<'a, Parent> {
+impl<'a> DriverDataTypeRef<'a> {
     /// Creates a new reference to the given data type.
     pub(crate) fn new(data_type: *const struct_CassDataType_) -> Self {
         Self {
@@ -370,9 +370,13 @@ impl<'a, Parent> DriverDataTypeRef<'a, Parent> {
             _lifetime: PhantomData,
         }
     }
+
+    pub(crate) fn into_inner(self) -> DriverDataType {
+        self.inner
+    }
 }
 
-impl<'a, Parent> Deref for DriverDataTypeRef<'a, Parent> {
+impl<'a> Deref for DriverDataTypeRef<'a> {
     type Target = DriverDataType;
 
     /// Returns a reference to the inner data type object.
@@ -381,7 +385,7 @@ impl<'a, Parent> Deref for DriverDataTypeRef<'a, Parent> {
     }
 }
 
-impl AsRef<DriverDataType> for DriverDataTypeRef<'_, DriverDataType> {
+impl AsRef<DriverDataType> for DriverDataTypeRef<'_> {
     /// Returns a reference to the inner data type object.
     fn as_ref(&self) -> &DriverDataType {
         &self.inner

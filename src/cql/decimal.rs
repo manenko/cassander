@@ -1,5 +1,6 @@
 #[cfg(feature = "bigdecimal")]
 use bigdecimal::BigDecimal;
+#[cfg(feature = "bigdecimal")]
 use thiserror::Error;
 
 use crate::cql::CqlVarInt;

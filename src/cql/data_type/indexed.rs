@@ -43,14 +43,28 @@ impl IndexedDataType {
         DataTypeRef::new(element_type)
     }
 
+    /// Creates a new indexed data type from the given `DriverDataType`.
+    pub(crate) fn from_driver(data_type: DriverDataType) -> Self {
+        assert!(
+            matches!(data_type.value_type(), ValueType::List | ValueType::Set),
+            "invalid data type",
+        );
+
+        Self(data_type)
+    }
+
+    /// Returns a reference to the wrapped `DriverDataType`.
     pub(crate) fn inner(&self) -> &DriverDataType {
         &self.0
     }
 
+    /// Returns a mutable reference to the wrapped `DriverDataType`.
     pub(crate) fn inner_mut(&mut self) -> &mut DriverDataType {
         &mut self.0
     }
 
+    /// Creates a new indexed data type with the given value type and element
+    /// type.
     fn new<D>(value_type: ValueType, element_type: D) -> Self
     where
         D: AsRef<DataType>,
