@@ -13,10 +13,10 @@ use crate::ffi::{
     cass_collection_append_duration,
     cass_collection_append_float,
     cass_collection_append_inet,
+    cass_collection_append_int8,
     cass_collection_append_int16,
     cass_collection_append_int32,
     cass_collection_append_int64,
-    cass_collection_append_int8,
     cass_collection_append_string_n,
     cass_collection_append_uint32,
     cass_collection_append_uuid,
@@ -31,8 +31,8 @@ use crate::ffi::{
     struct_CassCollection_,
 };
 use crate::{
-    to_result,
     DriverError,
+    handle_driver_error,
 };
 
 /// A collection of CQL values.
@@ -94,7 +94,9 @@ impl CassCollection {
     pub fn append_i8(&mut self, value: i8) -> Result<(), DriverError> {
         let error = unsafe { cass_collection_append_int8(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+
+        Ok(())
     }
 
     /// Appends an `i16` value to the collection.
@@ -102,7 +104,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_int16(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends an `i32` value to the collection.
@@ -110,7 +113,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_int32(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends an `i64` value to the collection.
@@ -118,7 +122,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_int64(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends an `u32` value to the collection.
@@ -126,7 +131,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_uint32(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends an `f32` value to the collection.
@@ -134,7 +140,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_float(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends an `f64` value to the collection.
@@ -142,7 +149,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_double(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends a `bool` value to the collection.
@@ -150,7 +158,8 @@ impl CassCollection {
         let value = if value { CASS_TRUE } else { CASS_FALSE };
         let error = unsafe { cass_collection_append_bool(self.inner(), value) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends a `String` value to the collection.
@@ -168,7 +177,8 @@ impl CassCollection {
             )
         };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends raw bytes to the collection.
@@ -186,7 +196,8 @@ impl CassCollection {
             )
         };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends a `CqlUuid` value to the collection.
@@ -194,7 +205,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_uuid(self.inner(), value.inner()) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends a `CqlInet` value to the collection.
@@ -202,7 +214,8 @@ impl CassCollection {
         let error =
             unsafe { cass_collection_append_inet(self.inner(), value.into()) };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends a `CqlDecimal` value to the collection.
@@ -220,7 +233,8 @@ impl CassCollection {
             )
         };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends a `CqlDuration` value to the collection.
@@ -237,7 +251,8 @@ impl CassCollection {
             )
         };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Appends a collection to the collection.
@@ -249,7 +264,8 @@ impl CassCollection {
             cass_collection_append_collection(self.inner(), value.inner())
         };
 
-        to_result(error)
+        handle_driver_error!(error);
+        Ok(())
     }
 
     /// Returns the inner driver object.

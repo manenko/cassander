@@ -16,9 +16,9 @@ use crate::ffi::{
     struct_CassUuid_,
 };
 use crate::{
-    to_result,
     DriverError,
     DriverErrorKind,
+    handle_driver_error,
 };
 
 /// A UUID version.
@@ -202,7 +202,9 @@ impl FromStr for CqlUuid {
             cass_uuid_from_string_n(cstr.as_ptr(), str_length, &mut uuid)
         };
 
-        to_result::<()>(code).map(|_| Self(uuid))
+        handle_driver_error!(code);
+
+        Ok(Self(uuid))
     }
 }
 

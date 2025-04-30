@@ -10,10 +10,10 @@ use crate::ffi::{
     struct_CassSsl_,
 };
 use crate::{
-    to_result,
     DriverError,
     DriverErrorKind,
     SslVerifyFlags,
+    handle_driver_error,
 };
 
 // TODO: Check if `cass_ssl_new` and `cass_ssl_new_no_lib_init` return NULL
@@ -67,7 +67,9 @@ impl Ssl {
         let ptr = cert.as_ptr() as *const c_char;
         let code = unsafe { cass_ssl_set_cert_n(self.inner(), ptr, len) };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the flags used to verify the peer's certificate.
@@ -102,7 +104,9 @@ impl Ssl {
         let ptr = cert.as_ptr() as *const c_char;
         let code = unsafe { cass_ssl_set_cert_n(self.inner(), ptr, len) };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the client-side private key in the PEM format.
@@ -135,7 +139,9 @@ impl Ssl {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 }
 

@@ -3,7 +3,6 @@ use std::fmt::{
     Formatter,
 };
 
-use crate::DriverError;
 #[rustfmt::skip]
 use crate::ffi::{
     enum_CassError_,
@@ -308,28 +307,27 @@ impl DriverErrorKind {
     }
 }
 
-/// Converts a driver error code to a `Result`.
-pub(crate) fn to_result<T>(code: enum_CassError_) -> Result<T, DriverError>
-where
-    T: Default,
-{
-    DriverErrorKind::from_driver(code)
-        .map(|kind| Err(DriverError::with_kind(kind)))
-        .unwrap_or_else(|| Ok(T::default()))
-}
-
-/// Converts a driver error code to a `Result` with the given error message.
-pub(crate) fn to_result_with_message<T, M>(
-    code: enum_CassError_,
-    message: M,
-) -> Result<T, DriverError>
-where
-    T: Default,
-    M: Into<String>,
-{
-    DriverErrorKind::from_driver(code)
-        .map(|kind| Err(DriverError::with_message(kind, message)))
-        .unwrap_or_else(|| Ok(T::default()))
+#[macro_export]
+#[doc(hidden)]
+macro_rules! handle_driver_error {
+    ($code:expr) => {
+        if let Some(kind) = $crate::error::DriverErrorKind::from_driver($code) {
+            return Err(DriverError::with_kind(kind));
+        }
+    };
+    ($code:expr, | $err:ident | $handler:block) => {
+        if let Some(kind) = $crate::error::DriverErrorKind::from_driver($code) {
+            let $err = Err($crate::error::DriverError::with_kind(kind));
+            $handler
+        }
+    };
+    ($code:expr, $message:literal, | $err:ident | $handler:block) => {
+        if let Some(kind) = $crate::error::DriverErrorKind::from_driver($code) {
+            let $err =
+                Err($crate::error::DriverError::with_message(kind, $message));
+            $handler
+        }
+    };
 }
 
 impl Display for DriverErrorKind {

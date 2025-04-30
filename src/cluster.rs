@@ -60,7 +60,6 @@ use crate::ffi::{
     struct_CassCluster_,
 };
 use crate::{
-    to_result,
     CassRetryPolicy,
     Consistency,
     DriverError,
@@ -68,6 +67,7 @@ use crate::{
     ProtocolVersion,
     Ssl,
     TimestampGen,
+    handle_driver_error,
 };
 
 // TODO: `cass_cluster_set_authenticator_callbacks`
@@ -116,7 +116,9 @@ impl Cluster {
             cass_cluster_set_contact_points_n(self.inner(), ptr, len)
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the port.
@@ -126,7 +128,9 @@ impl Cluster {
         let port = port as i32;
         let code = unsafe { cass_cluster_set_port(self.inner(), port) };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the SSL context and enables SSL.
@@ -154,7 +158,9 @@ impl Cluster {
         let code =
             unsafe { cass_cluster_set_protocol_version(self.inner(), version) };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the default consistency level of a statement.
@@ -168,7 +174,9 @@ impl Cluster {
             cass_cluster_set_consistency(self.inner(), consistency.to_driver())
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the default serial consistency level of a statement.
@@ -185,7 +193,9 @@ impl Cluster {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the number of I/O threads.
@@ -205,7 +215,9 @@ impl Cluster {
             cass_cluster_set_num_threads_io(self.inner(), num_threads)
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the size of the fixed size queue that stores pending requests.
@@ -222,7 +234,9 @@ impl Cluster {
         let code =
             unsafe { cass_cluster_set_queue_size_io(self.inner(), queue_size) };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the size of the fixed size queue that stores events.
@@ -240,7 +254,9 @@ impl Cluster {
             cass_cluster_set_queue_size_event(self.inner(), queue_size)
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the number of connections made to each server in each IO thread.
@@ -261,7 +277,9 @@ impl Cluster {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the maximum number of connections made to each server in each IO
@@ -283,7 +301,9 @@ impl Cluster {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the wait time in milliseconds before attempting to reconnect.
@@ -326,7 +346,9 @@ impl Cluster {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the timeout in milliseconds for connecting to a node.
@@ -528,7 +550,9 @@ impl Cluster {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Configures the cluster to use token-aware request routing.
@@ -882,7 +906,9 @@ impl Cluster {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Enables constant speculative executions with the supplied settings.
@@ -912,7 +938,9 @@ impl Cluster {
             )
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Disables speculative executions.
@@ -925,7 +953,9 @@ impl Cluster {
             cass_cluster_set_no_speculative_execution_policy(self.inner())
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the maximum number of "pending write" objects that will be saved
@@ -950,7 +980,9 @@ impl Cluster {
             cass_cluster_set_max_reusable_write_objects(self.inner(), num)
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Enables/Disables preparation of statements on all available hosts.
@@ -965,7 +997,9 @@ impl Cluster {
             cass_cluster_set_prepare_on_all_hosts(self.inner(), enabled)
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Enables/Disables pre-preparing cached prepared statements when existing
@@ -987,7 +1021,9 @@ impl Cluster {
             cass_cluster_set_prepare_on_up_or_add_host(self.inner(), enabled)
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Enables/Disables the `NO_COMPACT` startup option.
@@ -1002,7 +1038,9 @@ impl Cluster {
             cass_cluster_set_no_compact(self.inner(), enabled.into())
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the application name.
@@ -1104,7 +1142,9 @@ impl Cluster {
             cass_cluster_set_histogram_refresh_interval(self.inner(), interval)
         };
 
-        to_result(code)
+        handle_driver_error!(code);
+
+        Ok(())
     }
 
     /// Sets the timestamp generator used to assign timestamps to all requests
@@ -1114,9 +1154,11 @@ impl Cluster {
     /// generator.
     pub fn set_timestamp_gen(
         &mut self,
-        gen: &TimestampGen,
+        generator: &TimestampGen,
     ) -> Result<(), DriverError> {
-        unsafe { cass_cluster_set_timestamp_gen(self.inner(), gen.inner()) };
+        unsafe {
+            cass_cluster_set_timestamp_gen(self.inner(), generator.inner())
+        };
 
         Ok(())
     }

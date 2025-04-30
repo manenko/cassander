@@ -33,12 +33,11 @@ use crate::ffi::{
     struct_CassUuid_,
 };
 use crate::{
-    to_result,
-    to_result_with_message,
     DriverError,
     DriverErrorDetails,
     DriverErrorKind,
     Session,
+    handle_driver_error,
 };
 
 // TODO: cass_future_get_prepared
@@ -265,8 +264,9 @@ impl<R> DriverFuture<R> {
             time_and_version:   0,
         };
         let code = unsafe { cass_future_tracing_id(self.inner(), &mut id) };
+        handle_driver_error!(code);
 
-        to_result::<()>(code).map(|_| CqlUuid::from_driver(id))
+        Ok(CqlUuid::from_driver(id))
     }
 
     /// Gets the error from the future if the future failed.
@@ -359,7 +359,18 @@ where
             cass_future_set_callback(self.inner, Some(future_callback), target)
         };
 
-        to_result_with_message(code, "failed to set future callback")?;
+        handle_driver_error!(code, "failed to set future callback", |e| {
+            return Poll::Ready(e);
+        });
+
+        if let Some(kind) = DriverErrorKind::from_driver(code) {
+            let error = Err(DriverError::with_message(
+                kind,
+                "failed to set future callback",
+            ));
+
+            return Poll::Ready(error);
+        }
 
         Poll::Pending
     }

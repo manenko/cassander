@@ -28,9 +28,9 @@ use crate::ffi::{
     struct_CassDataType_,
 };
 use crate::{
-    to_result,
     DriverError,
     DriverErrorKind,
+    handle_driver_error,
 };
 
 /// A data type used to describe a value, collection or user-defined type.
@@ -264,7 +264,9 @@ impl DriverDataType {
             cass_data_type_add_sub_type(self.inner(), data_type.inner())
         };
 
-        to_result(error)
+        handle_driver_error!(error);
+
+        Ok(())
     }
 
     /// Adds a sub-type to a UDT by name.

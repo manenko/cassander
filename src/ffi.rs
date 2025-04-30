@@ -4,18 +4,18 @@ mod bindings;
 
 use core::slice;
 use std::ffi::{
-    c_char,
     CStr,
     FromBytesWithNulError,
+    c_char,
 };
 use std::str::Utf8Error;
 
 pub(crate) use bindings::*;
 
 use crate::{
-    to_result,
     DriverError,
     DriverErrorKind,
+    handle_driver_error,
 };
 
 /// Given a Rust string slices, calls the setter with the slice pointer and
@@ -28,7 +28,9 @@ where
     let s = s.as_ref();
     let error = setter(s.as_ptr() as _, s.len());
 
-    to_result(error)
+    handle_driver_error!(error);
+
+    Ok(())
 }
 
 /// Calls the getter which extracts a C string pointer and its lengths, then
@@ -41,7 +43,9 @@ where
     let mut len = 0;
 
     let error = getter(&mut ptr, &mut len);
-    to_result(error)?;
+    if let Some(kind) = DriverErrorKind::from_driver(error) {
+        return Err(DriverError::with_kind(kind));
+    }
 
     c_str_n_to_str(ptr, len)
 }

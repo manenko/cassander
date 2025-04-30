@@ -7,10 +7,10 @@
 //! The driver also uses this allocator for any third-party libraries that
 //! allows to set custom memory management functions.
 use std::alloc::{
+    Layout,
     alloc,
     dealloc,
     realloc,
-    Layout,
 };
 use std::ffi::c_void;
 use std::mem::size_of;
@@ -21,8 +21,8 @@ use std::ptr::{
     null_mut,
 };
 
-use crate::ffi::cass_alloc_set_functions;
 use crate::DriverError;
+use crate::ffi::cass_alloc_set_functions;
 
 /// Configures the underlying DataStax C++ driver for Apache Cassandra to use
 /// Rust global memory allocator instead of its own memory management functions.
@@ -44,7 +44,7 @@ unsafe extern "C" fn rust_global_allocator_alloc(size: usize) -> *mut c_void {
         Layout::from_size_align(size + LAYOUT_DATA_SIZE, DEFAULT_ALIGNMENT)
             .expect("invalid memory layout");
 
-    let block_start = alloc(layout);
+    let block_start = unsafe { alloc(layout) };
 
     if block_start.is_null() {
         return null_mut::<c_void>();
@@ -58,7 +58,7 @@ unsafe extern "C" fn rust_global_allocator_realloc(
     size: usize,
 ) -> *mut c_void {
     if ptr.is_null() {
-        return rust_global_allocator_alloc(size);
+        return unsafe { rust_global_allocator_alloc(size) };
     }
 
     // TODO: handle zero-sized allocations
@@ -69,7 +69,7 @@ unsafe extern "C" fn rust_global_allocator_realloc(
     let new_layout = Layout::from_size_align(new_size, layout.align())
         .expect("invalid memory layout");
 
-    let new_block_start = realloc(block_start, layout, new_size);
+    let new_block_start = unsafe { realloc(block_start, layout, new_size) };
 
     if new_block_start.is_null() {
         return null_mut::<c_void>();
@@ -84,7 +84,7 @@ unsafe extern "C" fn rust_global_allocator_free(ptr: *mut c_void) {
     }
 
     let (block_start, layout) = restore_layout(ptr as *const u8);
-    dealloc(block_start, layout);
+    unsafe { dealloc(block_start, layout) };
 }
 
 // # The Problem
